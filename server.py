@@ -21,9 +21,13 @@ import logging
 import os
 import signal
 import sys
+import re
+import urllib.parse
 import webbrowser
+from collections import OrderedDict
 from pathlib import Path
 
+import aiohttp
 from aiohttp import web
 
 import pyatv
@@ -110,6 +114,7 @@ class State:
         self.pairing_protocol = None
         self.prefs_path = DATA_DIR / "prefs.json"
         self.prefs = self.load_prefs()
+        self.info = InfoService(self)
 
     def load_prefs(self):
         try:
@@ -120,6 +125,10 @@ class State:
     def save_prefs(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.prefs_path.write_text(json.dumps(self.prefs, indent=2))
+        try:
+            os.chmod(self.prefs_path, 0o600)  # may hold an API key
+        except Exception:
+            pass
 
     async def init_storage(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -408,6 +417,210 @@ class DemoDevice:
         )
 
 
+
+# ---------------------------------------------------------------------------
+# "About what's playing": Wikipedia summary + optional rare facts from Claude.
+# Both are OPT-IN (prefs["info_enabled"]) because they send the title of what
+# you are watching off the local network. Nothing here runs unless enabled.
+# ---------------------------------------------------------------------------
+
+WIKI_UA = "Clicker/1.0 (https://github.com/lightsgoblack/clicker; local Apple TV remote, personal use)"
+FACTS_MODEL = "claude-opus-5"
+FACTS_SYSTEM = (
+    "You write trivia for a living-room TV remote app. The user tells you what is on screen "
+    "(a show, film, video, song, or channel). Reply with 5 genuinely surprising, specific, "
+    "little-known facts about that work or its people that you are highly confident are TRUE "
+    "and documented (production stories, casting near-misses, real-world consequences, records, "
+    "odd coincidences). No spoilers for plot twists. One or two sentences each, plain text, no markdown. "
+    "If you do not actually know this work well enough to be sure, return exactly one item that says so "
+    "instead of inventing anything. Output ONLY a JSON array of strings."
+)
+
+
+class InfoService:
+    def __init__(self, state):
+        self.state = state
+        self.cache = OrderedDict()  # key -> dict, small LRU
+
+    def _remember(self, key, value):
+        self.cache[key] = value
+        while len(self.cache) > 60:
+            self.cache.popitem(last=False)
+
+    @staticmethod
+    async def _wiki_get(session, params, tries=3):
+        """GET api.php as JSON, retrying briefly on 429 (Wikipedia throttles quick successive calls)."""
+        for attempt in range(tries):
+            async with session.get("https://en.wikipedia.org/w/api.php", params=params,
+                                   headers={"User-Agent": WIKI_UA}, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                if r.status == 200:
+                    return await r.json()
+                if r.status != 429 or attempt == tries - 1:
+                    log.info("wikipedia HTTP %s for %s", r.status, params.get("gsrsearch") or params.get("titles"))
+                    return None
+                wait = float(r.headers.get("Retry-After") or 0) or 1.2 * (attempt + 1)
+            await asyncio.sleep(min(wait, 4))
+        return None
+
+    @staticmethod
+    def _words(s):
+        return {w for w in re.findall(r"[a-z0-9]+", (s or "").lower()) if len(w) >= 4}
+
+    async def wiki(self, session, query, base=None):
+        """Best Wikipedia article for query in one API call (search + intro + thumbnail).
+        `base` is the bare title used for the sanity check when `query` carries a hint like "TV series"."""
+        if not query or len(query) < 2:
+            return None
+        base = base or query
+        params = {
+            "action": "query", "format": "json", "formatversion": "2",
+            "generator": "search", "gsrsearch": query, "gsrlimit": "4",
+            "prop": "extracts|pageimages|description|pageprops",
+            "exintro": "1", "explaintext": "1", "exlimit": "4", "exsentences": "4",
+            "pithumbsize": "480", "pilicense": "any", "pilimit": "4", "ppprop": "disambiguation",
+        }
+        data = await self._wiki_get(session, params)
+        if not data:
+            return None
+        pages = data.get("query", {}).get("pages", [])
+        pages.sort(key=lambda pg: pg.get("index", 99))
+        qw = self._words(base)
+        for pg in pages:
+            title = pg.get("title", "")
+            if "disambiguation" in (pg.get("pageprops") or {}):
+                continue
+            if qw and not (qw & self._words(title)) and not (qw & self._words(pg.get("extract", "")[:300])):
+                continue
+            if not pg.get("extract"):
+                continue
+            thumb = (pg.get("thumbnail") or {}).get("source")
+            if not thumb:
+                thumb = await self.lead_image(session, title)
+            return {
+                "title": title,
+                "description": pg.get("description"),
+                "extract": pg.get("extract"),
+                "thumbnail": thumb,
+                "url": "https://en.wikipedia.org/wiki/" + urllib.parse.quote(title.replace(" ", "_")),
+            }
+        return None
+
+    async def lead_image(self, session, title):
+        """First real picture in the article (posters are non-free, so pageimages skips them)."""
+        try:
+            params = {"action": "query", "format": "json", "formatversion": "2", "titles": title, "prop": "images", "imlimit": "50"}
+            data = await self._wiki_get(session, params)
+            if not data:
+                return None
+            pages = data.get("query", {}).get("pages", [])
+            names = [im.get("title", "") for pg in pages for im in pg.get("images", [])]
+            names = [n for n in names if re.search(r"\.(jpe?g|png|webp|svg)$", n, re.I) and not re.search(r"(icon|symbol|question_book|edit-|wiki|disambig|padlock|nuvola|oojs|commons)", n, re.I)]
+            if not names:
+                return None
+            tw = self._words(re.sub(r"\(.*?\)", "", title)) - {"series", "film", "season", "show"}
+            def score(n):
+                w = self._words(n)
+                return (2 if (tw & w) else 0) + (3 if re.search(r"(poster|cover|title[ _]?card|key[ _]?art|artwork|logo)", n, re.I) else 0) - (1 if n.lower().endswith(".svg") else 0)
+            pick = max(names, key=score)
+            log.debug("lead image for %r: %d candidates, picked %r", title, len(names), pick)
+            # Special:FilePath redirects straight to a rendered thumbnail (SVGs included) with no
+            # second API call, which Wikipedia rate-limits when it has to render on demand.
+            fname = pick.split(":", 1)[1].replace(" ", "_")
+            return "https://en.wikipedia.org/wiki/Special:FilePath/" + urllib.parse.quote(fname) + "?width=480"
+        except Exception as e:
+            log.info("lead image failed for %r: %s", title, e)
+            return None
+
+    async def facts(self, ctx):
+        """Five rare facts from Claude. Uses the stored key, else the SDK's own credential lookup."""
+        import anthropic
+        key = self.state.prefs.get("anthropic_key") or None
+        try:
+            client = anthropic.AsyncAnthropic(api_key=key) if key else anthropic.AsyncAnthropic()
+        except Exception as e:
+            raise RuntimeError("No Claude API key. Add one in Settings.") from e
+        desc = ", ".join(f"{k}: {v}" for k, v in ctx.items() if v)
+        try:
+            resp = await client.messages.create(
+                model=FACTS_MODEL,
+                max_tokens=2000,
+                system=FACTS_SYSTEM,
+                extra_body={"output_config": {"effort": "medium"}},  # extra_body works on old and new SDKs alike
+                messages=[{"role": "user", "content": f"On screen right now: {desc}"}],
+            )
+        except anthropic.AuthenticationError:
+            raise RuntimeError("No valid Claude API key. Add one in Settings.")
+        except anthropic.RateLimitError:
+            raise RuntimeError("Claude is rate-limited right now. Try again in a minute.")
+        except anthropic.APIStatusError as e:
+            raise RuntimeError(f"Claude error {e.status_code}: {e.message}")
+        except anthropic.APIConnectionError:
+            raise RuntimeError("Could not reach Claude. Check the internet connection.")
+        except Exception as e:
+            if "authentication method" in str(e).lower():
+                raise RuntimeError("No Claude API key. Add one in Settings.") from e
+            raise
+        if resp.stop_reason == "refusal":
+            raise RuntimeError("Claude declined to write facts for this one.")
+        text = "".join(b.text for b in resp.content if b.type == "text").strip()
+        m = re.search(r"\[.*\]", text, re.S)
+        try:
+            items = json.loads(m.group(0) if m else text)
+            items = [str(x).strip() for x in items if str(x).strip()]
+        except Exception:
+            items = [ln.strip("-•* ").strip() for ln in text.splitlines() if ln.strip()]
+        return items[:6]
+
+    async def lookup(self, ctx, fresh=False):
+        key = json.dumps(ctx, sort_keys=True)
+        if not fresh and key in self.cache:
+            return {**self.cache[key], "cached": True}
+        out = {"wiki": None, "facts": None, "factsError": None}
+        app = (ctx.get("app") or "").lower()
+        is_video_platform = app in ("youtube", "youtube tv", "twitch")
+        is_music = app in ("music", "apple music", "spotify", "tidal", "pandora", "soundcloud", "amazon music")
+        series, title, artist, mtype = ctx.get("series"), ctx.get("title"), ctx.get("artist"), (ctx.get("type") or "").lower()
+        is_music = is_music or mtype == "music"
+        cands = []  # (query, base)
+        if series:
+            cands += [(f"{series} TV series", series), (series, series)]
+        if artist and is_video_platform:
+            cands += [(artist, artist)]
+        if title and is_music:
+            cands += [(f"{title} song {artist or ''}".strip(), title), (title, title)]
+        elif title and not series:
+            if mtype == "tv":
+                cands += [(f"{title} TV series", title), (f"{title} film", title), (title, title)]
+            else:
+                cands += [(f"{title} film", title), (f"{title} TV series", title), (title, title)]
+        elif title:
+            cands += [(title, title)]
+        if artist:
+            cands += [(artist, artist)]
+        seen = set()
+        async with aiohttp.ClientSession() as session:
+            for q, base in cands:
+                if not q or q in seen:
+                    continue
+                seen.add(q)
+                try:
+                    hit = await self.wiki(session, q, base)
+                except Exception as e:
+                    log.info("wiki lookup failed for %r: %s", q, e)
+                    hit = None
+                if hit:
+                    out["wiki"] = hit
+                    break
+        try:
+            out["facts"] = await self.facts(ctx)
+        except RuntimeError as e:
+            out["factsError"] = str(e)
+        except Exception as e:
+            out["factsError"] = f"Facts unavailable: {e}"
+        self._remember(key, out)
+        return {**out, "cached": False}
+
+
 # ---------------------------------------------------------------------------
 # HTTP routes
 # ---------------------------------------------------------------------------
@@ -588,6 +801,41 @@ def routes(state: State):
         except Exception as e:
             return json_error(f"Power failed: {e}", 500)
         return web.json_response({"ok": True})
+
+    @r.get("/api/prefs")
+    async def prefs_get(_):
+        k = state.prefs.get("anthropic_key") or ""
+        return web.json_response({"ok": True, "infoEnabled": bool(state.prefs.get("info_enabled")),
+                                  "hasKey": bool(k), "keyHint": ("…" + k[-4:]) if k else ""})
+
+    @r.post("/api/prefs")
+    async def prefs_set(req):
+        body = await req.json()
+        if "infoEnabled" in body:
+            state.prefs["info_enabled"] = bool(body["infoEnabled"])
+        if "anthropicKey" in body:
+            k = (body.get("anthropicKey") or "").strip()
+            if k:
+                state.prefs["anthropic_key"] = k
+            else:
+                state.prefs.pop("anthropic_key", None)
+        state.save_prefs()
+        return await prefs_get(req)
+
+    @r.get("/api/info")
+    async def info(req):
+        if not state.prefs.get("info_enabled"):
+            return json_error("Info lookups are turned off. Enable them in Settings.", 403)
+        q = req.query
+        ctx = {k: (q.get(k) or "").strip() for k in ("title", "series", "artist", "app", "season", "episode", "type")}
+        ctx = {k: v for k, v in ctx.items() if v}
+        if not ctx.get("title") and not ctx.get("series") and not ctx.get("artist"):
+            return json_error("Nothing is playing to look up.")
+        try:
+            data = await state.info.lookup(ctx, fresh=q.get("fresh") == "1")
+        except Exception as e:
+            return json_error(f"Lookup failed: {e}", 500)
+        return web.json_response({"ok": True, **data})
 
     @r.post("/api/quit")
     async def quit_(_):

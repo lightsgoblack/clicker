@@ -21,6 +21,8 @@ Display name is "Colin's Cool Crazy Couch Computer Clicker" (short: C⁶ Clicker
 - No mute in the protocol. Volume commands work through HDMI-CEC / the TV, so they depend on the TV honoring them.
 - The catalog bundle IDs in `index.html` are community-known values, not verified against every tvOS release; the "On this TV" tab (`/api/apps`) is authoritative.
 
+- **Info lookups** (`InfoService` in `server.py`): opt-in via `prefs.info_enabled`; Wikipedia through ONE `api.php` call (`generator=search` + extracts + pageimages with `pilicense=any`; the REST `page/summary` endpoint 429s this client, do not go back to it); facts via the official `anthropic` SDK (`claude-opus-5`, effort medium through `extra_body` so old SDKs on the CLT Python 3.9 path still work). Key lives in `prefs.json` (chmod 600), never returned in full. No key + no env credentials → friendly "add a key" error. Results LRU-cached per playing context.
+
 ## Verify
 - `.venv/bin/python server.py --demo --no-open` then drive the UI in a browser; `/api/demo/log` shows every command the fake device received.
 - Real-device behavior (does Netflix honor the link, does the TV respond to volume) cannot be verified headlessly. Say so.

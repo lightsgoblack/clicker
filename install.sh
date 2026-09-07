@@ -45,7 +45,7 @@ cd "$APP/Contents/Resources/app"
 if [ ! -x .venv/bin/python ]; then
   say "Setting up (about a minute)…"
   "$PY" -m venv .venv
-  .venv/bin/pip install --quiet --disable-pip-version-check pyatv
+  .venv/bin/pip install --quiet --disable-pip-version-check pyatv anthropic
 fi
 [ -z "$CLICKER_SRC" ] && rm -rf "$TMP"
 

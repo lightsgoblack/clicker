@@ -609,17 +609,21 @@ async def make_app(state: State):
     app = web.Application()
     app.add_routes(routes(state))
 
-    async def on_startup(_):
+    async def auto_connect():
+        # Runs in the background so the port opens immediately; the UI polls
+        # /api/status and flips to "connected" when this finishes.
         last = state.prefs.get("last")
-        if state.demo:
+        if state.demo or not last:
             return
-        if last:
-            try:
-                await state.scan(timeout=4)
-                await state.connect(last)
-                log.info("Reconnected to %s", state.config.name)
-            except Exception as e:
-                log.info("Auto-connect skipped: %s", e)
+        try:
+            await state.scan(timeout=4)
+            await state.connect(last)
+            log.info("Reconnected to %s", state.config.name)
+        except Exception as e:
+            log.info("Auto-connect skipped: %s", e)
+
+    async def on_startup(_):
+        asyncio.get_event_loop().create_task(auto_connect())
 
     async def on_cleanup(_):
         await state.pair_cancel()

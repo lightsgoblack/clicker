@@ -427,6 +427,20 @@ def routes(state: State):
     async def index(_):
         return web.FileResponse(HERE / "index.html", headers={"Cache-Control": "no-store"})
 
+    STATIC = {
+        "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+        "/icon-512.png": ("icon-512.png", "image/png"),
+        "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
+    }
+
+    @r.get("/apple-touch-icon.png")
+    @r.get("/apple-touch-icon-precomposed.png")
+    @r.get("/icon-512.png")
+    @r.get("/manifest.webmanifest")
+    async def static(req):
+        name, ctype = STATIC.get(req.path, STATIC["/apple-touch-icon.png"])
+        return web.FileResponse(HERE / name, headers={"Content-Type": ctype, "Cache-Control": "no-cache"})
+
     @r.get("/api/status")
     async def status(_):
         return web.json_response({"ok": True, **(await state.status())})

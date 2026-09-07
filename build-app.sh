@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 rm -rf build dist
 .venv/bin/pyinstaller --noconfirm --clean --windowed --name Clicker \
   --icon mac/AppIcon.icns --osx-bundle-identifier com.colin.clicker \
-  --add-data "index.html:." \
+  --add-data "index.html:." --add-data "apple-touch-icon.png:." --add-data "icon-512.png:." --add-data "manifest.webmanifest:." \
   --collect-submodules pyatv \
   server.py >/dev/null
 PL=dist/Clicker.app/Contents/Info.plist

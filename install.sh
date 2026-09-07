@@ -36,7 +36,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
 cp "$SRC/mac/Info.plist" "$APP/Contents/Info.plist"
 cp "$SRC/mac/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 cp "$SRC/mac/launcher.sh" "$APP/Contents/MacOS/Clicker"; chmod +x "$APP/Contents/MacOS/Clicker"
-cp "$SRC/server.py" "$SRC/index.html" "$SRC/start.command" "$APP/Contents/Resources/app/"
+cp "$SRC/server.py" "$SRC/index.html" "$SRC/start.command" "$SRC/apple-touch-icon.png" "$SRC/icon-512.png" "$SRC/manifest.webmanifest" "$APP/Contents/Resources/app/"
 chmod +x "$APP/Contents/Resources/app/start.command"
 touch "$APP"  # nudge Finder to refresh the icon
 

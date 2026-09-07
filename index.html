@@ -398,8 +398,26 @@ html[data-theme="owens"] .chip,html[data-theme="owens"] .icon-btn,html[data-them
 html[data-theme="owens"] .bar{height:1px;background:var(--border)} html[data-theme="owens"] .bar i{background:var(--accent)}
 html[data-theme="owens"] footer{font-style:italic}
 @media (prefers-reduced-motion:reduce){html[data-theme="owens"] *,html[data-theme="vhs"] body,html[data-theme="vhs"] body::after,html[data-theme="lateshow"] body::before,html[data-theme="reactive"] body::before,html[data-theme="reactive"] .np .art{animation:none!important}}
+/* TV tabs */
+.tvtabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px}
+.tvtabs button{padding:5px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tvtabs button.on{background:var(--surface3);color:var(--text)}
+.tvtabs button .dot{width:7px;height:7px;border-radius:50%;background:var(--faint)} .tvtabs button.on .dot{background:var(--ok)}
+.tvtabs button.more{padding:5px 8px;color:var(--faint)}
+@media (max-width:640px){.tvtabs button{padding:5px 8px;font-size:12px}}
+/* Stats */
+.stat-h{font-size:17px;line-height:1.4;margin:4px 0 14px}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:grid;grid-template-columns:110px 1fr 56px;gap:10px;align-items:center;font-size:13px}
+.bar-row .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .b{height:10px;background:var(--surface3);border-radius:5px;overflow:hidden}.bar-row .b i{display:block;height:100%;background:var(--accent)}
+.bar-row .v{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.spark{display:flex;gap:2px;align-items:flex-end;height:44px;margin-top:6px}.spark i{flex:1;background:var(--accent);opacity:.7;border-radius:2px 2px 0 0;min-height:1px}
+/* Roulette */
+.tile.roulette .ico{background:var(--surface);border:1px dashed var(--border2);font-size:24px}
+.tile.spin{border-color:var(--accent);background:var(--accent-soft)}
 /* Kid mode: remote + favorites only */
-html[data-kid] #editBtn,html[data-kid] #settingsBtn,html[data-kid] #partyBtn,html[data-kid] #themeBtn,html[data-kid] #devChip,html[data-kid] #favEditToggle,html[data-kid] #aboutBtn,html[data-kid] .type,html[data-kid] .type + .hint,html[data-kid] #findForm,html[data-kid] #findForm + .hint,html[data-kid] .sleep,html[data-kid] .cwt .x,html[data-kid] .tile.add,html[data-kid] #layoutBtn,html[data-kid] footer kbd,html[data-kid] [data-cmd="power"],html[data-kid] #updBanner{display:none!important}
+html[data-kid] .tvtabs .more,html[data-kid] #editBtn,html[data-kid] #settingsBtn,html[data-kid] #partyBtn,html[data-kid] #themeBtn,html[data-kid] #devChip,html[data-kid] #favEditToggle,html[data-kid] #aboutBtn,html[data-kid] .type,html[data-kid] .type + .hint,html[data-kid] #findForm,html[data-kid] #findForm + .hint,html[data-kid] .sleep,html[data-kid] .cwt .x,html[data-kid] .tile.add,html[data-kid] #layoutBtn,html[data-kid] footer kbd,html[data-kid] [data-cmd="power"],html[data-kid] #updBanner{display:none!important}
 html[data-kid] #kidChip{background:var(--accent-soft);border-color:var(--accent);color:var(--text)}
 html[data-kid] #npCard{cursor:default}
 /* Sleep timer */
@@ -611,6 +629,7 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
     <div class="brand"><svg class="mark" viewBox="0 0 48 48" width="30" height="30"><rect class="mk-bg" width="48" height="48" rx="13" fill="var(--bg)" stroke="var(--border2)"/><path d="M24 5C34 14 34 34 24 43 14 34 14 14 24 5Z" fill="var(--text)"/><circle cx="24" cy="24" r="10.5" fill="var(--accent)"/><circle cx="24" cy="24" r="6.2" fill="var(--bg)"/><circle cx="24" cy="24" r="2" fill="var(--accent)"/><circle cx="26.4" cy="21.4" r="1.3" fill="var(--text)"/></svg><span class="full">Colin's Cool Crazy Couch Computer Clicker</span><span class="short">C⁶ Clicker</span></div>
     <div class="spacer"></div>
     <button class="chip" id="kidChip" hidden title="Kid mode is on. Tap to unlock."><span>🔒 Kid mode</span></button>
+    <div class="tvtabs" id="tvTabs" hidden></div>
     <button class="chip" id="devChip" title="Devices"><i class="dot"></i><span id="devName">Not connected</span></button>
     <button class="icon-btn" id="editBtn" title="Edit favorites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
     <button class="icon-btn" id="themeBtn" title="Toggle light / dark"><svg id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg id="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
@@ -704,7 +723,7 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
 
       <!-- CONTINUE WATCHING -->
       <section class="card" id="cwCard" hidden>
-        <h2>Continue watching</h2>
+        <h2>Continue watching <span class="spacer"></span><button id="statsBtn">Stats</button></h2>
         <div class="cw" id="cw"></div>
       </section>
 
@@ -930,7 +949,7 @@ function renderStatus(st) {
   $('#aboutBtn').hidden = !playingCtx(st);
   renderUpdate(st);
   if (activeFx && activeFx.apply) activeFx.apply(st);
-  renderSleep(st); loadHistory(); renderKid(st);
+  renderSleep(st); loadHistory(); renderKid(st); loadTabs();
   if (activeFx === FX.ransom) ransomize(true);
   const chip = $('#devChip'); chip.classList.toggle('on', S.connected);
   $('#devName').textContent = S.connected ? st.device.name : 'Not connected';
@@ -1093,6 +1112,7 @@ function renderFavs() {
     t.addEventListener('drop', e => { e.preventDefault(); t.classList.remove('dragover'); const from = +e.dataTransfer.getData('text/plain'); if (isNaN(from) || from === i) return; const [m] = favs.splice(from, 1); favs.splice(i, 0, m); saveFavs(); });
     root.appendChild(t);
   });
+  if (favs.filter(f => f.kind === 'app' || f.kind === 'link').length >= 2) { const rl = document.createElement('button'); rl.className = 'tile roulette'; rl.innerHTML = '<div class="ico">🎲</div><div class="lbl">Roulette</div>'; rl.title = 'Let fate pick'; rl.onclick = roulette; root.appendChild(rl); }
   const add = document.createElement('button'); add.className = 'tile add'; add.innerHTML = '<div class="ico">+</div><div class="lbl">Add</div>';
   add.onclick = openAddSheet; root.appendChild(add);
   $('#favCard').classList.toggle('editing', S.editing);
@@ -1136,6 +1156,7 @@ function openSheet(node) {
   scrim.appendChild(sheet); scrim.addEventListener('click', e => { if (e.target === scrim) closeSheet(); });
   sheet.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); });
   $('#sheetRoot').appendChild(scrim); S.sheet = scrim;
+  snd('whoosh');
   return sheet;
 }
 function closeSheet() { if (S.sheet) { S.sheet.remove(); S.sheet = null; } }
@@ -1213,6 +1234,86 @@ async function connect(d, quiet) {
 }
 $('#devChip').onclick = openDevices; $('#bannerBtn').onclick = openDevices;
 
+// ---------- TV tabs ----------
+let tabsKey = '';
+async function loadTabs() {
+  let d; try { d = await api('devices/known'); } catch { return; }
+  const key = JSON.stringify([d.current, d.devices]); if (key === tabsKey) return; tabsKey = key;
+  const root = $('#tvTabs'); root.innerHTML = '';
+  const many = d.devices.length > 1;
+  root.hidden = !many; $('#devChip').hidden = many;
+  if (!many) return;
+  d.devices.forEach(dev => {
+    const b = document.createElement('button'); b.className = dev.identifier === d.current ? 'on' : ''; b.innerHTML = '<i class="dot"></i><span></span>'; b.lastChild.textContent = dev.name;
+    b.onclick = async () => { if (dev.identifier === d.current) return; b.classList.add('on'); b.lastChild.textContent = 'Connecting…'; try { renderStatus(await api('connect', { identifier: dev.identifier })); toast('Now controlling ' + dev.name, 'ok'); tabsKey = ''; loadTabs(); } catch (e) { toast(e.message, 'err'); tabsKey = ''; loadTabs(); } };
+    root.appendChild(b);
+  });
+  const m = document.createElement('button'); m.className = 'more'; m.title = 'All devices'; m.textContent = '…'; m.onclick = openDevices; root.appendChild(m);
+}
+
+// ---------- Roulette ----------
+async function roulette() {
+  const pool = favs.filter(f => f.kind === 'app' || f.kind === 'link');
+  if (pool.length < 2) { toast('Add a few more favorites first'); return; }
+  const tiles = $$('#favs .tile:not(.add):not(.roulette)');
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const idx = favs.indexOf(pick);
+  snd('spin');
+  let i = 0, steps = 14 + Math.floor(Math.random() * 6);
+  await new Promise(res => { const step = () => { tiles.forEach(t => t.classList.remove('spin')); const t = tiles[i % tiles.length]; if (t) t.classList.add('spin'); snd('tick'); i++; if (i < steps) setTimeout(step, 60 + i * 18); else { tiles.forEach(t => t.classList.remove('spin')); const win = tiles[idx]; if (win) win.classList.add('spin'); setTimeout(res, 500); } }; step(); });
+  tiles.forEach(t => t.classList.remove('spin'));
+  toast('The wheel says: ' + pick.label, 'ok');
+  runFav(pick);
+}
+
+// ---------- Watch stats ----------
+async function openStats() {
+  const node = sheetTop('Watch stats', 'From what the TV reports while something is playing. Counted on this Mac, shared with no one.');
+  const box = document.createElement('div'); node.appendChild(box); openSheet(node);
+  let d; try { d = await api('stats?days=30'); } catch (e) { box.innerHTML = `<div class="empty">${e.message}</div>`; return; }
+  const hrs = s => (s / 3600 >= 1 ? (s / 3600).toFixed(1) + ' h' : s < 60 ? 'under a minute' : Math.round(s / 60) + ' min');
+  if (!d.total) { box.innerHTML = '<div class="empty">Nothing counted yet. Stats build up while things play.</div>'; return; }
+  const h = document.createElement('div'); h.className = 'stat-h';
+  if (d.headline) h.innerHTML = `You've watched <b>${hrs(d.headline.app === undefined ? 0 : d.apps[0].seconds)}</b> of <b>${d.headline.app}</b> in the last 30 days` + (d.headline.topTitle ? `, <b>${Math.round(d.headline.topShare * 100)}%</b> of it <b>${d.headline.topTitle}</b>.` : '.') + ` ${hrs(d.total)} total across ${d.activeDays} day${d.activeDays === 1 ? '' : 's'}.`;
+  box.appendChild(h);
+  const sec = (title) => { const s = document.createElement('div'); s.className = 'sec'; s.style.marginTop = '14px'; s.textContent = title; box.appendChild(s); };
+  const bars = (rows) => { const w = document.createElement('div'); w.className = 'bars'; rows.forEach(r => { const row = document.createElement('div'); row.className = 'bar-row'; row.innerHTML = '<span class="n"></span><span class="b"><i></i></span><span class="v"></span>'; row.querySelector('.n').textContent = r.name; row.querySelector('.n').title = r.name; row.querySelector('i').style.width = Math.max(2, r.share * 100) + '%'; row.querySelector('.v').textContent = hrs(r.seconds); w.appendChild(row); }); box.appendChild(w); };
+  sec('By app'); bars(d.apps.slice(0, 6));
+  sec('Top shows and channels'); bars(d.titles.slice(0, 6));
+  sec('Last 30 days'); const sp = document.createElement('div'); sp.className = 'spark';
+  const days = []; for (let i = 29; i >= 0; i--) { const dt = new Date(Date.now() - i * 86400000); days.push(dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0')); }
+  const mx = Math.max(1, ...days.map(k => d.perDay[k] || 0));
+  days.forEach(k => { const i = document.createElement('i'); i.style.height = Math.round((d.perDay[k] || 0) / mx * 100) + '%'; i.title = k + ': ' + hrs(d.perDay[k] || 0); sp.appendChild(i); }); box.appendChild(sp);
+}
+$('#statsBtn').onclick = openStats;
+
+// ---------- Sounds (Web Audio, synthesized) ----------
+let AC = null; const sndOn = () => store.get('sound', false);
+function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } } if (AC.state !== 'running') AC.resume(); return AC; }
+function noise(ctx, dur) { const b = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * dur)), ctx.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = ctx.createBufferSource(); s.buffer = b; return s; }
+function env(ctx, g, a, d, peak = 1) { const t = ctx.currentTime; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+function snd(kind) {
+  if (!sndOn()) return; const ctx = ac(); if (!ctx) return;
+  const theme = html.getAttribute('data-theme'); const out = ctx.createGain(); out.gain.value = 0.35; out.connect(ctx.destination);
+  const tone = (f, type, a, d, peak = .5, f2) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, ctx.currentTime); if (f2) o.frequency.exponentialRampToValueAtTime(f2, ctx.currentTime + a + d); const g = ctx.createGain(); env(ctx, g, a, d, peak); o.connect(g).connect(out); o.start(); o.stop(ctx.currentTime + a + d + .05); };
+  const burst = (dur, cutoff, peak = .6, hp) => { const n = noise(ctx, dur); const f = ctx.createBiquadFilter(); f.type = hp ? 'highpass' : 'lowpass'; f.frequency.value = cutoff; const g = ctx.createGain(); env(ctx, g, .003, dur, peak); n.connect(f).connect(g).connect(out); n.start(); };
+  if (kind === 'whoosh') { const n = noise(ctx, .35); const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(300, ctx.currentTime); f.frequency.exponentialRampToValueAtTime(3000, ctx.currentTime + .3); const g = ctx.createGain(); env(ctx, g, .05, .3, .4); n.connect(f).connect(g).connect(out); n.start(); return; }
+  if (kind === 'spin') { for (let i = 0; i < 6; i++) setTimeout(() => tone(400 + i * 120, 'triangle', .005, .08, .3), i * 45); return; }
+  switch (theme) {
+    case 'terminal': burst(.03, 5000, .7, true); tone(1800, 'square', .002, .03, .15); break;               // typewriter clack
+    case 'vhs': tone(90, 'sine', .005, .12, .6, 50); burst(.08, 900, .35); break;                            // tape mechanism thunk
+    case 'chaos': tone(200 + Math.random() * 1600, ['square', 'sawtooth', 'triangle'][Math.floor(Math.random() * 3)], .005, .12, .35, 100 + Math.random() * 2000); break;
+    case 'braun': tone(1400, 'sine', .002, .05, .35); burst(.02, 3000, .25); break;                          // soft tock
+    case 'monolith': tone(2200, 'sine', .002, .03, .12); break;                                              // barely there
+    case 'blueprint': burst(.02, 6000, .4, true); break;                                                     // pencil tick
+    case 'ransom': burst(.05, 2500, .5); break;                                                              // paper snip
+    case 'acid': case 'rainbow': case 'vapor': tone(660, 'sine', .005, .09, .3, 990); break;                 // bubbly blip
+    case 'lava': case 'lateshow': case 'uv': tone(220, 'sine', .01, .12, .3); break;                         // warm thump
+    default: tone(1200, 'sine', .002, .04, .3); burst(.015, 4000, .3, true);                                 // apple-ish click
+  }
+}
+document.addEventListener('pointerdown', e => { if (e.target.closest('[data-cmd], .tile, .btn, .icon-btn, .chip, .tvtabs button')) snd('tick'); }, { capture: true, passive: true });
+
 // ---------- Sleep timer ----------
 let sleepTick = null;
 function renderSleep(st) {
@@ -1289,6 +1390,12 @@ async function openParty() {
       try { q.innerHTML = await (await fetch('/api/party/qr')).text(); } catch { q.textContent = 'QR unavailable'; }
       const u = document.createElement('div'); u.className = 'party-url'; u.textContent = p.url; box.appendChild(u);
       const h = document.createElement('div'); h.className = 'hint'; h.style.textAlign = 'center'; h.textContent = 'Phones need to be on the same Wi-Fi as this Mac, and this Mac needs to stay awake.'; box.appendChild(h);
+      const base = p.url.split('/?')[0], tok = p.url.split('party=')[1];
+      const s = document.createElement('div'); s.style.textAlign = 'left'; s.innerHTML = `<div class="sec" style="margin-top:18px">Siri &amp; Shortcuts</div><div class="hint">In the Shortcuts app, add a <b>Get Contents of URL</b> action with one of these, then give the shortcut a name like "Netflix on the big TV". From this Mac you can drop the <code>?party=…</code> part.</div><div class="list" style="margin-top:8px"></div>`;
+      const list = s.querySelector('.list');
+      const ex = [['Open Netflix', `${base}/api/do/launch?target=com.netflix.Netflix&party=${tok}`], ['Play / pause', `${base}/api/do/cmd?name=play_pause&party=${tok}`], ['TV to sleep', `${base}/api/do/cmd?name=suspend&party=${tok}`], ['Volume up', `${base}/api/do/cmd?name=volume_up&party=${tok}`]];
+      ex.forEach(([n, u]) => { const b = document.createElement('button'); b.className = 'item'; b.innerHTML = '<div class="t"><b></b><small></small></div><span class="plus">Copy</span>'; b.querySelector('b').textContent = n; b.querySelector('small').textContent = u; b.onclick = async () => { try { await navigator.clipboard.writeText(u); toast('Copied', 'ok'); } catch { toast('Select and copy the URL'); } }; list.appendChild(b); });
+      box.appendChild(s);
     } else if (p.on) {
       box.innerHTML += '<div class="empty">Could not find this Mac\u2019s Wi-Fi address.</div>';
     }
@@ -1483,6 +1590,8 @@ function openSettings() {
     <div style="display:flex;gap:8px;margin:-4px 0 12px"><input type="password" data-key placeholder="sk-ant-…" autocomplete="off" style="flex:1"><button class="btn sm primary" data-key-save>Save</button><button class="btn sm danger" data-key-clear>Remove</button></div>
     <div class="setting"><div class="t"><b>Updates</b><small data-ver>Checking version…</small></div><button class="btn sm" data-check>Check for updates</button></div>
     <div class="setting"><div class="t"><b>Check automatically</b><small>Once a day, Clicker asks GitHub whether a newer release exists. That request carries nothing about you or what you watch.</small></div><div class="seg" data-upd-seg><button data-v="0">Off</button><button data-v="1">On</button></div></div>
+    <div class="setting"><div class="t"><b>Watch stats</b><small>Hours by app and by show, from what the TV reports. Stays on this Mac.</small></div><button class="btn sm" data-stats>Show</button></div>
+    <div class="setting"><div class="t"><b>Button sounds</b><small>Synthesized on the spot, flavored by the theme: typewriter in Terminal, tape mechanism in VHS, bleeps in CHAOS.</small></div><div class="seg" data-snd-seg><button data-v="0">Off</button><button data-v="1">On</button></div></div>
     <div class="setting"><div class="t"><b>Kid mode</b><small>Remote and favorites only: no settings, no typing, no power, no editing, no About. A PIN turns it off.</small></div><button class="btn sm primary" data-kid-on>Turn on</button></div>
     <div class="setting"><div class="t"><b>Kid mode PIN</b><small data-kid-hint>Not set yet. You choose one the first time you turn Kid mode on.</small></div><button class="btn sm" data-kid-pin>Change PIN</button></div>
     <div class="setting"><div class="t"><b>Quit Clicker</b><small>Stops the server on the Mac. Open the app again to come back.</small></div><button class="btn sm danger" data-quit>Quit</button></div>
@@ -1521,6 +1630,10 @@ function openSettings() {
   node.querySelector('[data-key-save]').onclick = async () => { const v = node.querySelector('[data-key]').value.trim(); if (!v) { toast('Paste a key first', 'err'); return; } try { await savePrefs({ anthropicKey: v, infoEnabled: true, factsSource: 'own' }); node.querySelector('[data-key]').value = ''; infoSync(); toast('Key saved, using it for facts', 'ok'); } catch (e) { toast(e.message, 'err'); } };
   node.querySelector('[data-key-clear]').onclick = async () => { try { await savePrefs({ anthropicKey: '', factsSource: 'hosted' }); infoSync(); toast('Key removed, back to Colin\'s service'); } catch (e) { toast(e.message, 'err'); } };
   node.querySelector('[data-kid-on]').onclick = kidOn;
+  node.querySelector('[data-stats]').onclick = openStats;
+  const sndSync = () => $$('[data-snd-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (sndOn() ? '1' : '0')));
+  $$('[data-snd-seg] button', node).forEach(b => b.onclick = () => { store.set('sound', b.dataset.v === '1'); sndSync(); if (b.dataset.v === '1') { ac(); snd('tick'); } });
+  sndSync();
   api('kid').then(k => { node.querySelector('[data-kid-hint]').textContent = k.hasPin ? 'A PIN is set.' : 'Not set yet. You choose one the first time you turn Kid mode on.'; }).catch(() => {});
   node.querySelector('[data-kid-pin]').onclick = () => api('kid').then(k => {
     const setNew = (old) => pinPrompt('New PIN', 'Four to eight digits.', async np => { try { await api('kid', { on: false, pin: old, newPin: np }); closeSheet(); toast('PIN saved', 'ok'); } catch (e) { toast(e.message, 'err'); } });

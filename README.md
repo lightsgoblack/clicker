@@ -88,6 +88,11 @@ git clone https://github.com/lightsgoblack/clicker.git ~/Developer/clicker && ~/
 - **Bedtime.** A favorite in the Popular list: home, then sleep. Add your own steps to it as a macro.
 - **Find on TV.** Type a show, movie, or person; Clicker opens the TV's search, types it, and presses Select.
 - **Party mode.** The QR button in the header. Turn it on and anyone on your Wi-Fi scans the code to get the remote on their phone, no install or pairing. Turn it off and every phone is locked out. When it is off, only this Mac can reach the remote at all.
+- **Roulette.** A dice tile at the end of Favorites picks one at random and opens it. Decides the night for you.
+- **Watch stats.** Hours by app and by show over the last 30 days, with a daily sparkline. Counted on the Mac from what the TV reports, shared with no one. Stats button on the Continue watching card, or in Settings.
+- **Sounds.** Off by default, in Settings. Synthesized in the browser, flavored by theme: typewriter in Terminal, tape thunk in VHS, random bleeps in CHAOS, a soft tock in Braun.
+- **Several TVs.** Once two Apple TVs have been connected, the header shows a tab per TV. Tap to switch.
+- **Siri and Shortcuts.** Party mode's sheet lists ready-to-copy URLs (open an app, play/pause, sleep, volume) for a Shortcuts "Get Contents of URL" action, so "Hey Siri, Netflix on the big TV" is a two-minute setup. From the Mac itself, `http://localhost:8765/api/do/launch?target=com.netflix.Netflix` works with no token.
 - **Kid mode.** In Settings. Remote and favorites only: no settings, typing, power, editing, or About. A PIN you choose turns it off, and the server refuses the grown-up actions while it is on.
 
 ## About what's playing (optional)

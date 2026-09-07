@@ -32,6 +32,8 @@ Display name is "Colin's Cool Crazy Couch Computer Clicker" (short: C⁶ Clicker
 - **Signing:** `build-app.sh` auto-detects a "Developer ID Application" identity and notarizes when the `clicker-notary` keychain profile exists (`xcrun notarytool store-credentials clicker-notary --apple-id … --team-id 2UL4LM7L55 --password <app-specific>`). Entitlements in `mac/entitlements.plist`. Colin has a paid developer account (Aeolian) but as of 2026-09-07 only an "Apple Development" cert in the keychain; the Developer ID cert must be created in Xcode > Settings > Accounts > Manage Certificates.
 - **Browser-pane gotcha:** `document.hidden` is true in the preview pane, so status polling pauses; verify state-driven UI by reloading, not by waiting for a poll.
 
+- **1.6.0:** `watch_loop` (10s) records history + `stats.json` independent of the page; `/api/stats`; `prefs.known` drives header TV tabs (only when 2+); `/api/do/cmd` and `/api/do/launch` GET twins for Shortcuts, party token accepted via `?party=` on `/api/*` or `X-Party-Token`; sounds are Web Audio in `snd()` keyed by theme, off by default (`clicker_sound`). TV tabs UI is unverified with two real devices (demo has one).
+
 ## Verify
 - `.venv/bin/python server.py --demo --no-open` then drive the UI in a browser; `/api/demo/log` shows every command the fake device received.
 - Real-device behavior (does Netflix honor the link, does the TV respond to volume) cannot be verified headlessly. Say so.

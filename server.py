@@ -46,7 +46,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -135,6 +135,61 @@ class State:
             self.history = []
         self.sleep_at = None
         self.sleep_task = None
+        self.stats_path = DATA_DIR / "stats.json"
+        try:
+            self.stats = json.loads(self.stats_path.read_text())
+        except Exception:
+            self.stats = {}
+        self._stats_saved = 0
+
+    # ---- watch stats (local only) ----
+    def record_stats(self, p, app, seconds):
+        if not p or p.get("state") != "playing":
+            return
+        day = time.strftime("%Y-%m-%d")
+        d = self.stats.setdefault(day, {"apps": {}, "titles": {}})
+        app_name = (getattr(app, "name", None) if app else None) or "Unknown"
+        d["apps"][app_name] = d["apps"].get(app_name, 0) + seconds
+        label = (p.get("series") or p.get("artist") or p.get("title") or "Unknown")
+        key = f"{app_name}|{label}"
+        d["titles"][key] = d["titles"].get(key, 0) + seconds
+        if time.time() - self._stats_saved > 60:
+            self._stats_saved = time.time()
+            try:
+                DATA_DIR.mkdir(parents=True, exist_ok=True)
+                self.stats_path.write_text(json.dumps(self.stats))
+            except Exception:
+                pass
+
+    def stats_summary(self, days=30):
+        cutoff = time.strftime("%Y-%m-%d", time.localtime(time.time() - days * 86400))
+        apps, titles, per_day = {}, {}, {}
+        for day, d in self.stats.items():
+            if day < cutoff:
+                continue
+            per_day[day] = sum(d.get("apps", {}).values())
+            for a, sec in d.get("apps", {}).items():
+                apps[a] = apps.get(a, 0) + sec
+            for k, sec in d.get("titles", {}).items():
+                titles[k] = titles.get(k, 0) + sec
+        total = sum(apps.values())
+        top_apps = sorted(apps.items(), key=lambda x: -x[1])
+        top_titles = sorted(titles.items(), key=lambda x: -x[1])[:8]
+        out = {"days": days, "total": total,
+               "apps": [{"name": a, "seconds": sec, "share": (sec / total if total else 0)} for a, sec in top_apps],
+               "titles": [{"app": k.split("|", 1)[0], "name": k.split("|", 1)[1], "seconds": sec, "share": (sec / total if total else 0)} for k, sec in top_titles],
+               "perDay": per_day, "activeDays": len([v for v in per_day.values() if v > 0])}
+        if top_apps:
+            a, sec = top_apps[0]
+            within = [t for t in top_titles if t[0].startswith(a + "|")]
+            out["headline"] = {"app": a, "hours": sec / 3600, "topTitle": within[0][0].split("|", 1)[1] if within else None,
+                               "topShare": (within[0][1] / sec) if within and sec else 0}
+        return out
+
+    def remember_device(self, conf):
+        known = [k for k in self.prefs.get("known", []) if k.get("identifier") != conf.identifier]
+        known.insert(0, {"identifier": conf.identifier, "name": conf.name})
+        self.prefs["known"] = known[:6]
 
     # ---- continue watching ----
     def record_history(self, p, app):
@@ -276,6 +331,7 @@ class State:
         if self.demo:
             self.atv = DemoDevice()
             self.config = DemoDevice.config()
+            self.remember_device(self.config)
             return
         conf = self.configs.get(identifier)
         if conf is None:
@@ -289,6 +345,7 @@ class State:
         self.atv = atv
         self.config = conf
         self.prefs["last"] = identifier
+        self.remember_device(conf)
         self.save_prefs()
 
     async def disconnect(self):
@@ -1194,6 +1251,42 @@ def routes(state: State):
             return json_error(f"Search failed: {e}", 500)
         return web.json_response({"ok": True})
 
+    @r.get("/api/stats")
+    async def stats(req):
+        return web.json_response({"ok": True, **state.stats_summary(int(req.query.get("days", "30")))})
+
+    @r.get("/api/devices/known")
+    async def known(_):
+        cur = state.config.identifier if state.config else None
+        return web.json_response({"ok": True, "current": cur, "devices": state.prefs.get("known", [])})
+
+    # GET twins of the two commands Shortcuts and Siri most want, so a plain URL is enough.
+    @r.get("/api/do/cmd")
+    async def do_cmd(req):
+        atv = need_device()
+        name = req.query.get("name", "")
+        if name not in COMMANDS:
+            return json_error(f"Unknown command: {name}")
+        method, takes_action = COMMANDS[name]
+        try:
+            fn = getattr(atv.remote_control, method)
+            await (fn(action=InputAction.SingleTap) if takes_action else fn())
+        except Exception as e:
+            return json_error(f"{name} failed: {e}", 500)
+        return web.json_response({"ok": True})
+
+    @r.get("/api/do/launch")
+    async def do_launch(req):
+        atv = need_device()
+        target = (req.query.get("target") or "").strip()
+        if not target:
+            return json_error("Nothing to launch.")
+        try:
+            await atv.apps.launch_app(target)
+        except Exception as e:
+            return json_error(f"Launch failed: {e}", 500)
+        return web.json_response({"ok": True})
+
     @r.get("/api/kid")
     async def kid_get(_):
         return web.json_response({"ok": True, "on": bool(state.prefs.get("kid_mode")), "hasPin": bool(state.prefs.get("kid_pin"))})
@@ -1291,6 +1384,8 @@ async def party_gate(request, handler):
     tok = state.party_token()
     if tok and request.cookies.get("clicker_party") == tok:
         return await handler(request)
+    if tok and (request.headers.get("X-Party-Token") == tok or (request.path.startswith("/api/") and request.query.get("party") == tok)):
+        return await handler(request)
     if tok and request.query.get("party") == tok:
         resp = web.HTTPFound("/")
         resp.set_cookie("clicker_party", tok, max_age=30 * 86400, httponly=True, samesite="Lax")
@@ -1319,6 +1414,25 @@ async def make_app(state: State):
         except Exception as e:
             log.info("Auto-connect skipped: %s", e)
 
+    async def watch_loop():
+        # Every 10s, note what is playing (history + stats), whether or not a page is open.
+        while True:
+            await asyncio.sleep(10)
+            atv = state.atv
+            if atv is None:
+                continue
+            try:
+                playing = await atv.metadata.playing()
+                p = {"state": playing.device_state.name.lower(), "title": playing.title, "series": playing.series_name,
+                     "artist": playing.artist, "season": playing.season_number, "episode": playing.episode_number,
+                     "position": playing.position, "total": playing.total_time, "mediaType": playing.media_type.name.lower(),
+                     "contentId": getattr(playing, "content_identifier", None)}
+                app = getattr(atv.metadata, "app", None)
+                state.record_history(p, app)
+                state.record_stats(p, app, 10)
+            except Exception:
+                pass
+
     async def update_loop():
         await asyncio.sleep(8)
         while True:
@@ -1329,6 +1443,7 @@ async def make_app(state: State):
     async def on_startup(_):
         asyncio.get_event_loop().create_task(auto_connect())
         asyncio.get_event_loop().create_task(update_loop())
+        asyncio.get_event_loop().create_task(watch_loop())
 
     async def on_cleanup(_):
         await state.pair_cancel()

@@ -46,7 +46,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -187,7 +187,9 @@ class State:
         return out
 
     def remember_device(self, conf):
-        known = [k for k in self.prefs.get("known", []) if k.get("identifier") != conf.identifier]
+        if self.demo or str(conf.identifier).startswith("demo"):
+            return
+        known = [k for k in self.prefs.get("known", []) if k.get("identifier") != conf.identifier and not str(k.get("identifier", "")).startswith("demo")]
         known.insert(0, {"identifier": conf.identifier, "name": conf.name})
         self.prefs["known"] = known[:6]
 
@@ -1258,7 +1260,8 @@ def routes(state: State):
     @r.get("/api/devices/known")
     async def known(_):
         cur = state.config.identifier if state.config else None
-        return web.json_response({"ok": True, "current": cur, "devices": state.prefs.get("known", [])})
+        devs = [k for k in state.prefs.get("known", []) if not str(k.get("identifier", "")).startswith("demo")]
+        return web.json_response({"ok": True, "current": cur, "devices": devs})
 
     # GET twins of the two commands Shortcuts and Siri most want, so a plain URL is enough.
     @r.get("/api/do/cmd")

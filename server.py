@@ -46,7 +46,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.6.2"
+VERSION = "1.6.3"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -1015,10 +1015,19 @@ def routes(state: State):
     @r.get("/apple-touch-icon.png")
     @r.get("/apple-touch-icon-precomposed.png")
     @r.get("/icon-512.png")
-    @r.get("/manifest.webmanifest")
     async def static(req):
         name, ctype = STATIC.get(req.path, STATIC["/apple-touch-icon.png"])
         return web.FileResponse(HERE / name, headers={"Content-Type": ctype, "Cache-Control": "no-cache"})
+
+    @r.get("/manifest.webmanifest")
+    async def manifest(req):
+        # A phone that got in through party mode keeps working after "Add to Home Screen":
+        # the installed app starts at a URL that carries the party token, so it gets its own cookie.
+        m = json.loads((HERE / "manifest.webmanifest").read_text())
+        tok = state.party_token()
+        if tok and (req.cookies.get("clicker_party") == tok or req.query.get("party") == tok):
+            m["start_url"] = f"/?party={tok}"
+        return web.json_response(m, content_type="application/manifest+json", headers={"Cache-Control": "no-store"})
 
     @r.get("/api/status")
     async def status(_):
@@ -1387,7 +1396,7 @@ async def party_gate(request, handler):
     tok = state.party_token()
     if tok and request.cookies.get("clicker_party") == tok:
         return await handler(request)
-    if tok and (request.headers.get("X-Party-Token") == tok or (request.path.startswith("/api/") and request.query.get("party") == tok)):
+    if tok and (request.headers.get("X-Party-Token") == tok or ((request.path.startswith("/api/") or request.path == "/manifest.webmanifest") and request.query.get("party") == tok)):
         return await handler(request)
     if tok and request.query.get("party") == tok:
         resp = web.HTTPFound("/")

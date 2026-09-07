@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Clicker">
 <meta name="theme-color" content="#0b0c0f">
 <title>Colin's Cool Crazy Couch Computer Clicker</title>
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -472,6 +473,17 @@ header{display:flex;align-items:center;gap:10px;padding:6px 0 16px}
 .icon-btn svg{width:18px;height:18px}
 .icon-btn.active{color:var(--accent);border-color:var(--accent)}
 
+/* Phones: brand and buttons on the first row, TV chip or tabs on their own row */
+@media (max-width:640px){
+  header{flex-wrap:wrap;gap:8px;padding-bottom:12px}
+  header .spacer{display:none}
+  .brand{margin-right:auto}
+  #devChip,#tvTabs,#kidChip{order:20;flex:1 1 100%;max-width:none;justify-content:center}
+  .tvtabs button{flex:1;justify-content:center}
+  .card{padding:14px;border-radius:16px}
+  .tile{min-height:88px}
+  body{padding-bottom:max(40px,env(safe-area-inset-bottom))}
+}
 /* Grid */
 .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
 .grid>*{min-width:0}

@@ -69,6 +69,14 @@ Either way, Clicker then runs quietly in the background and opens the remote in 
 
 Drag `Clicker` from Applications onto the Dock. Clicking it starts the server if needed and opens the remote. For a proper windowed app with no browser chrome, open the remote in Safari and choose **File, Add to Dock**; that creates a "Clicker" web app you can launch from the Dock too.
 
+## On your phone
+
+1. Turn on **Party mode** (QR button in the header) on the Mac.
+2. Scan the code with the phone's camera. The remote opens in Safari, laid out for a phone.
+3. Tap Share, then **Add to Home Screen**. Clicker becomes a full-screen app with its own icon, and it keeps its access even after you turn Party mode off and on again (the same code re-admits it).
+
+The Mac has to stay awake and on the same Wi-Fi. That is the one thing a native app would remove.
+
 ## Share it with friends
 
 This cannot live on Vercel or any web host: the server has to sit on the same Wi-Fi as the Apple TV, so each person runs it on their own Mac. Send them the Releases link (Apple Silicon) or the one-line install (any Mac) above. They need a Mac on the same Wi-Fi as their Apple TV, and the PIN the TV shows during the two pairing steps. That is the whole setup. Phones then work by opening the Mac's address in a browser while the Mac is awake.

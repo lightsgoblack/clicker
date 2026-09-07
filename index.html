@@ -15,9 +15,9 @@
   // Values are stored JSON-encoded (see `store` below), so parse them here too.
   try {
     var rd = function (k, ok, d) { try { var v = JSON.parse(localStorage.getItem('clicker_' + k)); return ok.indexOf(v) >= 0 ? v : d; } catch (e) { return d; } };
-    var th = rd('theme', ['dark', 'light', 'acid', 'lava', 'vapor', 'uv', 'rainbow', 'blackwork', 'flash'], 'dark');
+    var th = rd('theme', ['dark', 'light', 'acid', 'lava', 'vapor', 'uv', 'rainbow', 'blackwork', 'flash', 'chaos'], 'dark');
     document.documentElement.setAttribute('data-theme', th);
-    if (['acid', 'lava', 'vapor', 'uv', 'rainbow'].indexOf(th) >= 0) document.documentElement.setAttribute('data-psy', '');
+    if (['acid', 'lava', 'vapor', 'uv', 'rainbow', 'chaos'].indexOf(th) >= 0) document.documentElement.setAttribute('data-psy', '');
     if (['blackwork', 'flash'].indexOf(th) >= 0) document.documentElement.setAttribute('data-ink', '');
     document.documentElement.setAttribute('data-layout', rd('layout', ['classic', 'grid'], 'classic'));
   } catch (e) {}
@@ -183,6 +183,69 @@ html[data-ink] .np .art svg,html[data-ink] .key svg{stroke-width:1.6}
 html[data-ink] .about h4{font-family:var(--serif);font-style:italic;font-weight:400;font-size:24px}
 html[data-ink] .about img,html[data-ink] .facts li{border-radius:var(--r)}
 html[data-ink] .facts li{background:transparent;border-color:var(--border2)}
+
+/* ---------- CHAOS: nothing holds still ---------- */
+:root[data-theme="chaos"]{
+  --hue:0deg;
+  --bg:#050008; --surface:rgba(20,0,40,.62); --surface2:rgba(60,0,90,.55); --surface3:rgba(120,0,160,.6);
+  --border:hsl(calc(var(--hue) + 120deg) 100% 60% / .55); --border2:hsl(calc(var(--hue) + 200deg) 100% 65% / .8);
+  --text:#fff; --muted:hsl(calc(var(--hue) + 60deg) 100% 80%); --faint:hsl(calc(var(--hue) + 300deg) 90% 70%);
+  --accent:hsl(var(--hue) 100% 60%); --accent2:hsl(calc(var(--hue) + 40deg) 100% 50%); --on-accent:#000; --accent-soft:hsl(var(--hue) 100% 60% / .3);
+  --danger:#ff0040; --ok:#39ff14; --shadow:0 0 40px hsl(var(--hue) 100% 50% / .6);
+  --key:rgba(30,0,60,.7); --key-hi:hsl(calc(var(--hue) + 180deg) 100% 50% / .35); --key-ink:#fff; color-scheme:dark;
+}
+@keyframes chaosSpin{to{transform:rotate(360deg) scale(1.15)}}
+@keyframes chaosSpin2{from{transform:rotate(360deg)}to{transform:rotate(0deg)}}
+@keyframes chaosWobble{0%{transform:rotate(-1.4deg) translate(0,0)}25%{transform:rotate(1.1deg) translate(3px,-4px)}50%{transform:rotate(-.6deg) translate(-4px,3px)}75%{transform:rotate(1.6deg) translate(2px,5px)}100%{transform:rotate(-1.4deg) translate(0,0)}}
+@keyframes chaosJitter{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-2px,1px) rotate(-2deg)}40%{transform:translate(2px,-2px) rotate(2deg)}60%{transform:translate(-1px,2px) rotate(-1deg)}80%{transform:translate(1px,-1px) rotate(3deg)}}
+@keyframes chaosGlitch{0%,88%,100%{text-shadow:3px 0 #0ff,-3px 0 #f0f;transform:skewX(0)}90%{text-shadow:-8px 0 #0ff,8px 0 #ff0;transform:skewX(-12deg)}93%{text-shadow:6px 2px #f00,-6px -2px #0f0;transform:skewX(9deg) translateX(4px)}96%{text-shadow:-2px 0 #0ff,2px 0 #f0f;transform:skewX(-4deg)}}
+@keyframes chaosBreathe{0%,100%{transform:scale(1) rotate(-2deg)}50%{transform:scale(1.06) rotate(2deg)}}
+@keyframes chaosStretch{0%,100%{letter-spacing:.08em}50%{letter-spacing:.5em}}
+@keyframes chaosBorder{to{border-color:hsl(calc(var(--hue) + 360deg) 100% 60%)}}
+@keyframes chaosFlip{0%,100%{transform:rotateY(0)}50%{transform:rotateY(180deg)}}
+@keyframes chaosSlide{to{background-position:0 -400px}}
+html[data-theme="chaos"] body::before{inset:-40%;background:conic-gradient(from 90deg,#ff0040,#ffea00,#00ffd0,#7000ff,#ff00c8,#00ff3c,#ff0040);filter:blur(30px) saturate(2) contrast(1.4);opacity:.7;animation:chaosSpin 9s linear infinite}
+html[data-theme="chaos"] body::after{content:"";position:fixed;inset:-40%;z-index:-1;pointer-events:none;background:repeating-conic-gradient(from 0deg,transparent 0 12deg,rgba(255,255,255,.12) 12deg 14deg);mix-blend-mode:overlay;animation:chaosSpin2 23s linear infinite}
+html[data-theme="chaos"] .wrap{cursor:crosshair}
+html[data-theme="chaos"] .card{animation:chaosWobble 7s ease-in-out infinite;transform-origin:50% 50%;border-width:2px;box-shadow:var(--shadow);backdrop-filter:blur(8px) saturate(2)}
+html[data-theme="chaos"] .card:nth-of-type(2n){animation-duration:5.3s;animation-direction:reverse}
+html[data-theme="chaos"] .grid>div>.card:nth-child(1){animation-duration:9.1s}
+html[data-theme="chaos"] .grid>div>.card:nth-child(2){animation-duration:4.4s;animation-delay:-2s}
+html[data-theme="chaos"] .grid>div>.card:nth-child(3){animation-duration:6.6s;animation-delay:-1s;animation-direction:alternate}
+html[data-theme="chaos"] .card h2{font-family:"Chalkduster","Marker Felt",fantasy;font-size:15px;color:var(--accent);animation:chaosStretch 3s ease-in-out infinite;text-shadow:0 0 12px var(--accent)}
+html[data-theme="chaos"] .card h2 button{font-family:"Marker Felt","Chalkduster",cursive;font-size:14px;animation:chaosJitter 1.3s steps(5) infinite}
+html[data-theme="chaos"] .brand{font-family:"Impact","Arial Black",sans-serif;font-size:24px;letter-spacing:.06em;text-transform:uppercase;animation:chaosGlitch 4s infinite;color:#fff}
+html[data-theme="chaos"] .brand .mark{animation:chaosSpin2 6s linear infinite}
+html[data-theme="chaos"] .key{animation:chaosJitter 2.2s ease-in-out infinite;border-width:2px;border-color:var(--border2);font-family:"Marker Felt","Chalkduster",cursive;font-size:14px}
+html[data-theme="chaos"] .key:nth-child(2n){animation-duration:1.7s;animation-delay:-.7s}
+html[data-theme="chaos"] .key:nth-child(3n){animation-duration:3.1s;animation-delay:-1.4s;animation-direction:reverse}
+html[data-theme="chaos"] .key:hover{transform:rotate(-8deg) scale(1.12);background:var(--accent);color:#000;animation-play-state:paused}
+html[data-theme="chaos"] .key:active,html[data-theme="chaos"] .key.down{transform:rotate(12deg) scale(.9);box-shadow:0 0 30px var(--accent)}
+html[data-theme="chaos"] .dpad{animation:chaosBreathe 5s ease-in-out infinite;border:3px dashed var(--border2);background:radial-gradient(circle,hsl(calc(var(--hue) + 180deg) 100% 50% / .5),transparent 70%)}
+html[data-theme="chaos"] .dpad .center{border:3px double var(--accent);font-family:"Chalkduster",fantasy;font-size:13px;animation:chaosJitter .9s steps(4) infinite}
+@keyframes chaosWag{0%,100%{transform:rotate(-28deg)}50%{transform:rotate(28deg)}}
+html[data-theme="chaos"] .dpad .arrow{color:var(--accent);animation:chaosWag 1.1s ease-in-out infinite}
+html[data-theme="chaos"] .dpad .left,html[data-theme="chaos"] .dpad .right{animation-delay:-.55s}
+html[data-theme="chaos"] .dpad .arrow svg{stroke-width:3.5}
+html[data-theme="chaos"] .tile{animation:chaosBreathe 3.7s ease-in-out infinite;border:2px solid var(--border);font-family:"Marker Felt","Chalkduster",cursive}
+html[data-theme="chaos"] .tile:nth-child(2n){animation-duration:2.9s;animation-delay:-1.1s;animation-direction:reverse}
+html[data-theme="chaos"] .tile:nth-child(3n){animation-duration:4.8s;animation-delay:-2.3s}
+html[data-theme="chaos"] .tile:hover{transform:rotate(180deg) scale(1.1)!important;animation-play-state:paused}
+html[data-theme="chaos"] .tile .ico.brand{animation:chaosFlip 6s ease-in-out infinite;filter:hue-rotate(var(--hue)) saturate(2)}
+html[data-theme="chaos"] .tile:nth-child(odd) .ico.brand{animation-delay:-3s}
+html[data-theme="chaos"] .tile .lbl{font-size:13px;text-shadow:2px 2px 0 var(--accent2)}
+html[data-theme="chaos"] .np .title{font-family:"Impact","Arial Black",sans-serif;font-size:22px;letter-spacing:.03em;animation:chaosGlitch 3s infinite;animation-delay:-1.3s}
+html[data-theme="chaos"] .np .art{animation:chaosSpin2 4s linear infinite;border:2px dashed var(--accent)}
+html[data-theme="chaos"] .bar i{background:repeating-linear-gradient(90deg,#f0f 0 8px,#0ff 8px 16px,#ff0 16px 24px);animation:chaosSlide 1s linear infinite;background-size:24px 100%}
+html[data-theme="chaos"] .chip,html[data-theme="chaos"] .icon-btn{animation:chaosJitter 2.6s ease-in-out infinite;border:2px solid var(--border2)}
+html[data-theme="chaos"] .icon-btn:nth-child(3){animation-delay:-.9s}html[data-theme="chaos"] .icon-btn:nth-child(4){animation-delay:-1.8s;animation-direction:reverse}
+html[data-theme="chaos"] .btn.primary{animation:chaosBreathe 1.4s ease-in-out infinite;text-transform:uppercase;font-family:"Impact",sans-serif;letter-spacing:.1em}
+html[data-theme="chaos"] input,html[data-theme="chaos"] textarea{border:2px dashed var(--border2);font-family:"Marker Felt",cursive;font-size:16px}
+html[data-theme="chaos"] footer{font-family:"Chalkduster",fantasy;color:var(--accent);animation:chaosStretch 6s ease-in-out infinite}
+html[data-theme="chaos"] .hint{font-family:"Marker Felt",cursive;font-size:13px;color:var(--muted)}
+html[data-theme="chaos"] .sheet{border:3px double var(--accent);animation:chaosWobble 6s ease-in-out infinite;box-shadow:var(--shadow)}
+html[data-theme="chaos"] .toast{animation:chaosJitter .4s steps(3) infinite;border:2px solid var(--accent);font-family:"Impact",sans-serif;text-transform:uppercase;letter-spacing:.08em}
+@media (prefers-reduced-motion:reduce){html[data-theme="chaos"] *,html[data-theme="chaos"] body::before,html[data-theme="chaos"] body::after{animation:none!important}}
 /* Theme picker */
 .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
 .themes button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px;border-radius:14px;border:1px solid var(--border);background:var(--surface2);font-size:12px;font-weight:600;color:var(--muted)}
@@ -526,6 +589,7 @@ const THEMES = [
   { id: 'rainbow', label: 'Rainbow Road', psy: true, bar: '#0a0a10', sw: 'conic-gradient(#ff004c,#ff9d00,#ffe600,#00ff85,#00c8ff,#7a00ff,#ff00c8,#ff004c)' },
   { id: 'blackwork', label: 'Blackwork', ink: true, bar: '#0a0908', sw: 'linear-gradient(135deg,#0a0908 50%,#e9e4d8 50%)' },
   { id: 'flash', label: 'Flash Sheet', ink: true, bar: '#ebe5d5', sw: 'linear-gradient(135deg,#ebe5d5 50%,#14120e 50%)' },
+  { id: 'chaos', label: 'CHAOS', psy: true, bar: '#050008', sw: 'conic-gradient(from 90deg,#ff0040,#ffea00,#00ffd0,#7000ff,#ff00c8,#00ff3c,#ff0040)' },
 ];
 function setTheme(t) {
   const th = THEMES.find(x => x.id === t) || THEMES[0]; t = th.id;
@@ -535,8 +599,9 @@ function setTheme(t) {
   $('#sun').hidden = !(t === 'light' || t === 'flash'); $('#moon').hidden = (t === 'light' || t === 'flash');
   $('meta[name=theme-color]').content = th.bar;
   clearInterval(hueTimer); html.style.removeProperty('--hue');
-  if (t === 'rainbow' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    let deg = 0; hueTimer = setInterval(() => { deg = (deg + 1) % 360; html.style.setProperty('--hue', deg + 'deg'); }, 60);
+  if ((t === 'rainbow' || t === 'chaos') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const step = t === 'chaos' ? 7 : 1, ms = t === 'chaos' ? 40 : 60;
+    let deg = 0; hueTimer = setInterval(() => { deg = (deg + step) % 360; html.style.setProperty('--hue', deg + 'deg'); }, ms);
   }
 }
 let hueTimer = null;
@@ -547,7 +612,7 @@ function themeGrid() {
   THEMES.forEach(th => { const b = document.createElement('button'); b.dataset.t = th.id; b.innerHTML = '<span class="sw"></span><span></span>'; b.querySelector('.sw').style.background = th.sw; b.lastChild.textContent = th.label; b.onclick = () => { setTheme(th.id); draw(); }; g.appendChild(b); });
   draw(); return g;
 }
-function openThemes() { const node = sheetTop('Theme', 'Dark and Light are the sensible ones. Blackwork and Flash Sheet are ink on skin. The rest are for when the lights are off.'); node.appendChild(themeGrid()); openSheet(node); }
+function openThemes() { const node = sheetTop('Theme', 'Dark and Light are the sensible ones. Blackwork and Flash Sheet are ink on skin. The rest are for when the lights are off. CHAOS is a cry for help.'); node.appendChild(themeGrid()); openSheet(node); }
 $('#themeBtn').onclick = openThemes;
 function setLayout(l) { html.setAttribute('data-layout', l); store.set('layout', l); $('#layoutBtn').textContent = l === 'classic' ? 'Grid layout' : 'Classic layout'; }
 setLayout(html.getAttribute('data-layout'));

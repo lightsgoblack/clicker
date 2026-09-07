@@ -378,6 +378,11 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
     <button class="icon-btn" id="settingsBtn" title="Settings and shortcuts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
   </header>
 
+  <div class="banner" id="updBanner" hidden>
+    <span id="updText">A new version is available.</span>
+    <button class="btn sm" id="updLater">Later</button>
+    <button class="btn sm primary" id="updNow" style="margin-left:0">Update now</button>
+  </div>
   <div class="banner" id="banner" hidden>
     <span id="bannerText">Not connected to an Apple TV.</span>
     <button class="btn sm primary" id="bannerBtn">Choose device</button>
@@ -627,6 +632,7 @@ function playingCtx(st) {
 function renderStatus(st) {
   S.status = st; S.connected = !!st.connected;
   $('#aboutBtn').hidden = !playingCtx(st);
+  renderUpdate(st);
   const chip = $('#devChip'); chip.classList.toggle('on', S.connected);
   $('#devName').textContent = S.connected ? st.device.name : 'Not connected';
   $('#banner').hidden = S.connected;
@@ -905,6 +911,44 @@ async function connect(d, quiet) {
 }
 $('#devChip').onclick = openDevices; $('#bannerBtn').onclick = openDevices;
 
+// ---------- Updates ----------
+const UPD = { dismissed: store.get('upd_dismissed', ''), applying: false, fromVersion: null };
+function renderUpdate(st) {
+  const u = st && st.update; const b = $('#updBanner');
+  if (UPD.applying) {
+    if (st && st.version && UPD.fromVersion && st.version !== UPD.fromVersion) { UPD.applying = false; b.hidden = true; toast('Updated to ' + st.version, 'ok'); return; }
+    $('#updText').textContent = (u && u.progress) ? u.progress : 'Restarting…'; b.hidden = false; $('#updNow').hidden = true; $('#updLater').hidden = true; return;
+  }
+  if (!u || !u.latest || u.latest === UPD.dismissed) { b.hidden = true; return; }
+  $('#updText').textContent = `Clicker ${u.latest} is available (you have ${st.version}).`;
+  $('#updNow').hidden = false; $('#updLater').hidden = false; b.hidden = false;
+}
+async function applyUpdate() {
+  try {
+    UPD.applying = true; UPD.fromVersion = S.status && S.status.version; $('#updText').textContent = 'Starting update…'; $('#updNow').hidden = true; $('#updLater').hidden = true; $('#updBanner').hidden = false;
+    await api('update/apply', {});
+    // The server restarts itself; keep polling until a new version answers.
+    const started = Date.now();
+    const tick = async () => {
+      try { const st = await api('status'); renderStatus(st); if (!UPD.applying) return; } catch {}
+      if (Date.now() - started < 120000) setTimeout(tick, 1500); else { UPD.applying = false; $('#updText').textContent = 'The update took too long. If Clicker did not come back, open it from Applications.'; }
+    };
+    setTimeout(tick, 2500);
+  } catch (e) { UPD.applying = false; toast(e.message, 'err'); renderUpdate(S.status); }
+}
+$('#updNow').onclick = applyUpdate;
+$('#updLater').onclick = () => { const u = S.status && S.status.update; if (u) { UPD.dismissed = u.latest; store.set('upd_dismissed', u.latest); } $('#updBanner').hidden = true; };
+async function checkUpdates(btn) {
+  const old = btn.textContent; btn.textContent = 'Checking…'; btn.disabled = true;
+  try {
+    const r = await api('update/check?force=1');
+    if (r.error) toast(r.error, 'err');
+    else if (r.available) { UPD.dismissed = ''; store.set('upd_dismissed', ''); toast(`Version ${r.latest} is available`, 'ok'); await refresh(); closeSheet(); }
+    else toast(`You are on the newest version (${r.current})`, 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  btn.textContent = old; btn.disabled = false;
+}
+
 // ---------- About what's playing ----------
 let prefs = { infoEnabled: false, hasKey: false, keyHint: '' };
 async function loadPrefs() { try { prefs = await api('prefs'); } catch {} return prefs; }
@@ -1047,6 +1091,8 @@ function openSettings() {
     <div class="setting"><div class="t"><b>About what's playing</b><small>Tap the Now Playing card for a Wikipedia summary and rare facts. Sends the title of what you are watching to Wikipedia, and to Claude if a key is set. Off by default.</small></div><div class="seg" data-info-seg><button data-v="0">Off</button><button data-v="1">On</button></div></div>
     <div class="setting" data-key-row><div class="t"><b>Claude API key</b><small data-key-hint>Optional. Powers the rare facts. Stored only on this Mac. About two cents per lookup.</small></div></div>
     <div style="display:flex;gap:8px;margin:-4px 0 12px"><input type="password" data-key placeholder="sk-ant-…" autocomplete="off" style="flex:1"><button class="btn sm primary" data-key-save>Save</button><button class="btn sm danger" data-key-clear>Remove</button></div>
+    <div class="setting"><div class="t"><b>Updates</b><small data-ver>Checking version…</small></div><button class="btn sm" data-check>Check for updates</button></div>
+    <div class="setting"><div class="t"><b>Check automatically</b><small>Once a day, Clicker asks GitHub whether a newer release exists. That request carries nothing about you or what you watch.</small></div><div class="seg" data-upd-seg><button data-v="0">Off</button><button data-v="1">On</button></div></div>
     <div class="setting"><div class="t"><b>Quit Clicker</b><small>Stops the server on the Mac. Open the app again to come back.</small></div><button class="btn sm danger" data-quit>Quit</button></div>
     <div class="setting"><div class="t"><b>Keyboard shortcuts</b><small>Work whenever you are not typing in a field.</small></div></div>
     <div class="shortcuts">
@@ -1072,7 +1118,10 @@ function openSettings() {
   const ta = node.querySelector('[data-json]'); ta.value = JSON.stringify(favs, null, 2);
   node.querySelector('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(ta.value); toast('Copied', 'ok'); } catch { ta.select(); toast('Select all and copy'); } };
   node.querySelector('[data-import]').onclick = () => { try { const v = JSON.parse(ta.value); if (!Array.isArray(v)) throw 0; favs = v.filter(x => x && x.label && x.kind && x.value).map(x => Object.assign({ id: uid() }, x)); saveFavs(); toast('Imported ' + favs.length + ' favorites', 'ok'); } catch { toast('That is not a valid favorites JSON', 'err'); } };
-  const infoSync = () => { $$('[data-info-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (prefs.infoEnabled ? '1' : '0'))); node.querySelector('[data-key-hint]').textContent = prefs.hasKey ? `Key saved (${prefs.keyHint}). Powers the rare facts. About two cents per lookup.` : 'Optional. Powers the rare facts. Stored only on this Mac. About two cents per lookup.'; node.querySelector('[data-key-clear]').hidden = !prefs.hasKey; };
+  const updSync = () => { $$('[data-upd-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (prefs.updateCheck === false ? '0' : '1'))); node.querySelector('[data-ver]').textContent = `Version ${prefs.version || (S.status && S.status.version) || '?'}` + (S.status && S.status.update && S.status.update.latest ? ` · ${S.status.update.latest} is available` : ''); };
+  $$('[data-upd-seg] button', node).forEach(b => b.onclick = async () => { try { await savePrefs({ updateCheck: b.dataset.v === '1' }); updSync(); } catch (e) { toast(e.message, 'err'); } });
+  node.querySelector('[data-check]').onclick = () => checkUpdates(node.querySelector('[data-check]'));
+  const infoSync = () => { updSync(); $$('[data-info-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (prefs.infoEnabled ? '1' : '0'))); node.querySelector('[data-key-hint]').textContent = prefs.hasKey ? `Key saved (${prefs.keyHint}). Powers the rare facts. About two cents per lookup.` : 'Optional. Powers the rare facts. Stored only on this Mac. About two cents per lookup.'; node.querySelector('[data-key-clear]').hidden = !prefs.hasKey; };
   loadPrefs().then(infoSync); infoSync();
   $$('[data-info-seg] button', node).forEach(b => b.onclick = async () => { try { await savePrefs({ infoEnabled: b.dataset.v === '1' }); infoSync(); } catch (e) { toast(e.message, 'err'); } });
   node.querySelector('[data-key-save]').onclick = async () => { const v = node.querySelector('[data-key]').value.trim(); if (!v) { toast('Paste a key first', 'err'); return; } try { await savePrefs({ anthropicKey: v, infoEnabled: true }); node.querySelector('[data-key]').value = ''; infoSync(); toast('Key saved', 'ok'); } catch (e) { toast(e.message, 'err'); } };

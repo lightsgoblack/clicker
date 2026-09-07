@@ -2,7 +2,7 @@
 
 Colossally convenient couch control, courtesy of Colin. A free, local web remote for Apple TV that runs on your Mac. Open it in a browser tab (or on your phone over Wi-Fi), pair once with the PIN on the TV, and you have navigation, playback, volume, power, typing, and a customizable grid of favorites that launch apps or jump straight to a show.
 
-Nothing leaves your network unless you turn on the optional "About what's playing" lookups (see below). There are no accounts, no subscriptions, and no telemetry. Pairing credentials are stored in `~/Library/Application Support/Clicker/`.
+Nothing leaves your network except a once-a-day check for updates (a single request to GitHub, can be turned off) and the optional "About what's playing" lookups (see below). There are no accounts, no subscriptions, and no telemetry. Pairing credentials are stored in `~/Library/Application Support/Clicker/`.
 
 ## Start it
 
@@ -79,7 +79,7 @@ This cannot live on Vercel or any web host: the server has to sit on the same Wi
 git clone https://github.com/lightsgoblack/clicker.git ~/Developer/clicker && ~/Developer/clicker/start.command
 ```
 
-`mac/` holds the app-bundle pieces (`Info.plist`, `launcher.sh`, `AppIcon.icns`, regenerated from `icon.svg` with `qlmanage` + `iconutil`). `install.sh` assembles them into `~/Applications/Clicker.app`; set `CLICKER_SRC=/path/to/checkout` to build from a local copy instead of downloading. `build-app.sh` makes the self-contained PyInstaller build and zip for Releases (arch of the building Mac).
+`mac/` holds the app-bundle pieces (`Info.plist`, `launcher.sh`, `AppIcon.icns`, regenerated from `icon.svg` with `qlmanage` + `iconutil`). `install.sh` assembles them into `~/Applications/Clicker.app`; set `CLICKER_SRC=/path/to/checkout` to build from a local copy instead of downloading. `build-app.sh` makes the self-contained PyInstaller build and zip for Releases (arch of the building Mac). To ship a version: bump `VERSION` in `server.py`, commit, then `./release.sh "what changed"` builds, tags, and publishes the release; installed apps pick it up on their next check.
 
 ## About what's playing (optional)
 
@@ -88,6 +88,14 @@ Tap the Now Playing card, or the About button, for a panel about whatever is on:
 This is **off by default** because it is the one feature that talks to the internet. When on, the title of what you are watching (plus series, artist, and app name) is sent to Wikipedia, and to Anthropic's API if you have added a Claude API key. Nothing else is sent. Turn it on in Settings, or from the panel itself the first time.
 
 The facts need a Claude API key from [console.anthropic.com](https://console.anthropic.com/). Paste it in Settings; it is stored only in Clicker's preferences file on this Mac. Each lookup costs about two cents and is cached, and "More facts" asks again. The facts are AI-written from Claude's knowledge, so verify before betting money on one.
+
+## Updates
+
+Clicker checks GitHub once a day (and whenever you press **Check for updates** in Settings) for a newer release. If there is one, a banner offers **Update now**: it downloads the new version, swaps it into place, and relaunches. Pairing, favorites, and settings live outside the app, so they survive. The check is a single request for the release list; it carries nothing about you or what you watch, and it can be turned off in Settings.
+
+Builds older than 1.1.0 predate the updater and need one manual reinstall. Copies run from a git checkout update with `git pull`.
+
+Share this link, which always points at the newest version: https://github.com/lightsgoblack/clicker/releases/latest
 
 ## Keyboard
 

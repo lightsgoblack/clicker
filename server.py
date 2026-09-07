@@ -19,9 +19,14 @@ import asyncio
 import json
 import logging
 import os
-import signal
-import sys
+import platform
 import re
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
 import urllib.parse
 import webbrowser
 from collections import OrderedDict
@@ -38,6 +43,10 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+VERSION = "1.1.0"
+APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
+REPO = "lightsgoblack/clicker"
+FROZEN = bool(getattr(sys, "frozen", False))
 DATA_DIR = Path.home() / "Library" / "Application Support" / "Clicker"
 PORT = int(os.environ.get("PORT", "8765"))
 
@@ -115,6 +124,7 @@ class State:
         self.prefs_path = DATA_DIR / "prefs.json"
         self.prefs = self.load_prefs()
         self.info = InfoService(self)
+        self.updater = Updater(self)
 
     def load_prefs(self):
         try:
@@ -258,7 +268,10 @@ class State:
         await self.storage.save()
 
     async def status(self):
-        out = {"connected": self.atv is not None, "demo": self.demo}
+        out = {"connected": self.atv is not None, "demo": self.demo, "version": APP_VERSION}
+        u = self.updater.summary()
+        if u.get("available") or u.get("busy"):
+            out["update"] = {"latest": u.get("latest"), "busy": u["busy"], "progress": u["progress"]}
         if self.atv is None:
             out["last"] = self.prefs.get("last")
             return out
@@ -621,6 +634,152 @@ class InfoService:
         return {**out, "cached": False}
 
 
+
+# ---------------------------------------------------------------------------
+# Updater: checks GitHub Releases (on launch and daily, or on demand) and can
+# swap the running app in place. The check sends nothing but a request for the
+# release list. Opt out with prefs["update_check"] = false.
+# ---------------------------------------------------------------------------
+
+def _vtuple(v):
+    return tuple(int(x) for x in re.findall(r"\d+", str(v))[:3]) or (0,)
+
+
+def app_bundle():
+    """Path to the .app we are running from, or None (dev checkout / plain script)."""
+    for start in (Path(sys.executable).resolve(), HERE.resolve()):
+        for parent in [start] + list(start.parents):
+            if parent.suffix == ".app" and (parent / "Contents" / "MacOS").is_dir():
+                return parent
+    return None
+
+
+class Updater:
+    def __init__(self, state):
+        self.state = state
+        self.latest = None       # dict from last successful check
+        self.checked_at = 0
+        self.error = None
+        self.busy = False
+        self.progress = ""
+
+    def enabled(self):
+        return self.state.prefs.get("update_check", True)
+
+    async def check(self, force=False):
+        if not force and self.latest and time.time() - self.checked_at < 3600:
+            return self.summary()
+        url = os.environ.get("CLICKER_RELEASES_URL") or f"https://api.github.com/repos/{REPO}/releases/latest"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers={"User-Agent": WIKI_UA, "Accept": "application/vnd.github+json"},
+                                       timeout=aiohttp.ClientTimeout(total=10)) as r:
+                    if r.status == 404:
+                        raise RuntimeError("No public release found (is the repo private?).")
+                    if r.status != 200:
+                        raise RuntimeError(f"GitHub answered HTTP {r.status}.")
+                    d = await r.json()
+            arch = platform.machine()
+            asset = next((a for a in d.get("assets", []) if a.get("name") == f"Clicker-mac-{arch}.zip"), None)
+            self.latest = {
+                "version": d.get("tag_name", "").lstrip("v"),
+                "notes": (d.get("body") or "").strip(),
+                "page": d.get("html_url"),
+                "asset": asset.get("browser_download_url") if asset else None,
+                "size": asset.get("size") if asset else None,
+                "tarball": d.get("tarball_url"),
+            }
+            self.checked_at = time.time()
+            self.error = None
+        except Exception as e:
+            self.error = str(e)
+            log.info("Update check failed: %s", e)
+        return self.summary()
+
+    def summary(self):
+        dev_checkout = (HERE / ".git").exists()
+        out = {"current": APP_VERSION, "checkedAt": self.checked_at, "error": self.error,
+               "busy": self.busy, "progress": self.progress, "enabled": self.enabled(),
+               "canSelfUpdate": app_bundle() is not None and not dev_checkout}
+        if self.latest:
+            out["latest"] = self.latest["version"]
+            out["notes"] = self.latest["notes"]
+            out["page"] = self.latest["page"]
+            out["available"] = _vtuple(self.latest["version"]) > _vtuple(APP_VERSION)
+        else:
+            out["available"] = False
+        return out
+
+    async def apply(self):
+        """Download the newest release and replace this app in place, then relaunch."""
+        if self.busy:
+            raise RuntimeError("An update is already in progress.")
+        if not self.latest or not self.summary()["available"]:
+            await self.check(force=True)
+            if not self.latest or not self.summary()["available"]:
+                raise RuntimeError(self.error or "Already on the newest version.")
+        bundle = app_bundle()
+        if bundle is None or (HERE / ".git").exists():
+            raise RuntimeError("This copy runs from source. Update it with git pull or the installer line.")
+        self.busy = True
+        try:
+            tmp = Path(tempfile.mkdtemp(prefix="clicker-update-"))
+            if FROZEN:
+                if not self.latest.get("asset"):
+                    raise RuntimeError(f"The release has no download for this Mac ({platform.machine()}).")
+                await self._download(self.latest["asset"], tmp / "Clicker.zip", self.latest.get("size"))
+                self.progress = "Unpacking…"
+                subprocess.run(["ditto", "-xk", str(tmp / "Clicker.zip"), str(tmp / "unz")], check=True, capture_output=True)
+                new_app = tmp / "unz" / "Clicker.app"
+                if not (new_app / "Contents" / "MacOS" / "Clicker").exists():
+                    raise RuntimeError("Downloaded app looks incomplete; not installing it.")
+                self.progress = "Installing…"
+                old = tmp / "old.app"
+                shutil.move(str(bundle), str(old))
+                try:
+                    subprocess.run(["ditto", str(new_app), str(bundle)], check=True, capture_output=True)
+                except Exception:
+                    shutil.move(str(old), str(bundle))  # roll back
+                    raise
+            else:
+                # Script-built app (install.sh): replace the files inside Contents/Resources/app.
+                await self._download(self.latest["tarball"], tmp / "src.tgz", None)
+                subprocess.run(["tar", "-xzf", str(tmp / "src.tgz"), "-C", str(tmp)], check=True, capture_output=True)
+                src = next(p for p in tmp.iterdir() if p.is_dir() and p.name.startswith("lightsgoblack-clicker"))
+                self.progress = "Installing…"
+                for name in ("server.py", "index.html", "start.command", "apple-touch-icon.png", "icon-512.png", "manifest.webmanifest"):
+                    shutil.copy2(src / name, HERE / name)
+                shutil.copy2(src / "mac" / "launcher.sh", bundle / "Contents" / "MacOS" / "Clicker")
+                shutil.copy2(src / "mac" / "Info.plist", bundle / "Contents" / "Info.plist")
+                shutil.copy2(src / "mac" / "AppIcon.icns", bundle / "Contents" / "Resources" / "AppIcon.icns")
+            self.progress = "Restarting…"
+            subprocess.Popen(["/bin/sh", "-c", f'sleep 1.5; open -a "{bundle}" --args --no-open'],
+                             start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            asyncio.get_event_loop().call_later(0.6, lambda: os.kill(os.getpid(), signal.SIGTERM))
+        except Exception:
+            self.busy = False
+            self.progress = ""
+            raise
+
+    async def _download(self, url, dest, expected_size):
+        self.progress = "Downloading…"
+        if not url.startswith(("https://github.com/", "https://api.github.com/", "https://objects.githubusercontent.com/")) and not os.environ.get("CLICKER_RELEASES_URL"):
+            raise RuntimeError("Refusing to download from an unexpected host.")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers={"User-Agent": WIKI_UA}, timeout=aiohttp.ClientTimeout(total=600)) as r:
+                if r.status != 200:
+                    raise RuntimeError(f"Download failed (HTTP {r.status}).")
+                got = 0
+                with open(dest, "wb") as fh:
+                    async for chunk in r.content.iter_chunked(1 << 16):
+                        fh.write(chunk)
+                        got += len(chunk)
+                        if expected_size:
+                            self.progress = f"Downloading… {int(got * 100 / expected_size)}%"
+        if expected_size and got != expected_size:
+            raise RuntimeError("Download was incomplete. Try again.")
+
+
 # ---------------------------------------------------------------------------
 # HTTP routes
 # ---------------------------------------------------------------------------
@@ -806,13 +965,16 @@ def routes(state: State):
     async def prefs_get(_):
         k = state.prefs.get("anthropic_key") or ""
         return web.json_response({"ok": True, "infoEnabled": bool(state.prefs.get("info_enabled")),
-                                  "hasKey": bool(k), "keyHint": ("…" + k[-4:]) if k else ""})
+                                  "hasKey": bool(k), "keyHint": ("…" + k[-4:]) if k else "",
+                                  "updateCheck": bool(state.prefs.get("update_check", True)), "version": APP_VERSION})
 
     @r.post("/api/prefs")
     async def prefs_set(req):
         body = await req.json()
         if "infoEnabled" in body:
             state.prefs["info_enabled"] = bool(body["infoEnabled"])
+        if "updateCheck" in body:
+            state.prefs["update_check"] = bool(body["updateCheck"])
         if "anthropicKey" in body:
             k = (body.get("anthropicKey") or "").strip()
             if k:
@@ -836,6 +998,18 @@ def routes(state: State):
         except Exception as e:
             return json_error(f"Lookup failed: {e}", 500)
         return web.json_response({"ok": True, **data})
+
+    @r.get("/api/update/check")
+    async def update_check(req):
+        return web.json_response({"ok": True, **(await state.updater.check(force=req.query.get("force") == "1"))})
+
+    @r.post("/api/update/apply")
+    async def update_apply(_):
+        try:
+            await state.updater.apply()
+        except Exception as e:
+            return json_error(str(e), 400)
+        return web.json_response({"ok": True})
 
     @r.post("/api/quit")
     async def quit_(_):
@@ -870,8 +1044,16 @@ async def make_app(state: State):
         except Exception as e:
             log.info("Auto-connect skipped: %s", e)
 
+    async def update_loop():
+        await asyncio.sleep(8)
+        while True:
+            if state.updater.enabled() and not state.demo:
+                await state.updater.check()
+            await asyncio.sleep(24 * 3600)
+
     async def on_startup(_):
         asyncio.get_event_loop().create_task(auto_connect())
+        asyncio.get_event_loop().create_task(update_loop())
 
     async def on_cleanup(_):
         await state.pair_cancel()

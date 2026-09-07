@@ -19,7 +19,10 @@ import asyncio
 import json
 import logging
 import os
+import hashlib
+import ipaddress
 import platform
+import secrets
 import re
 import shutil
 import signal
@@ -43,7 +46,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -125,6 +128,100 @@ class State:
         self.prefs = self.load_prefs()
         self.info = InfoService(self)
         self.updater = Updater(self)
+        self.history_path = DATA_DIR / "history.json"
+        try:
+            self.history = json.loads(self.history_path.read_text())
+        except Exception:
+            self.history = []
+        self.sleep_at = None
+        self.sleep_task = None
+
+    # ---- continue watching ----
+    def record_history(self, p, app):
+        if not p or not p.get("title") or p.get("state") not in ("playing", "paused"):
+            return
+        app_id = getattr(app, "identifier", None) if app else None
+        app_name = getattr(app, "name", None) if app else None
+        key = (p.get("series") or p.get("title"), app_id)
+        entry = {"title": p.get("title"), "series": p.get("series"), "artist": p.get("artist"), "season": p.get("season"),
+                 "episode": p.get("episode"), "app": app_id, "appName": app_name, "contentId": p.get("contentId"),
+                 "type": p.get("mediaType"), "position": p.get("position"), "total": p.get("total"), "ts": int(time.time())}
+        if self.history and (self.history[0].get("series") or self.history[0].get("title"), self.history[0].get("app")) == key:
+            self.history[0].update({k: v for k, v in entry.items() if v is not None})
+            changed = True
+        else:
+            self.history = [h for h in self.history if (h.get("series") or h.get("title"), h.get("app")) != key]
+            self.history.insert(0, entry)
+            changed = True
+        self.history = self.history[:20]
+        if changed and (not hasattr(self, "_hist_saved") or time.time() - self._hist_saved > 15):
+            self._hist_saved = time.time()
+            try:
+                DATA_DIR.mkdir(parents=True, exist_ok=True)
+                self.history_path.write_text(json.dumps(self.history))
+            except Exception:
+                pass
+
+    @staticmethod
+    def deep_link(h):
+        """Best-effort link back into the content; falls back to just the app."""
+        app, cid = h.get("app") or "", h.get("contentId") or ""
+        if app == "com.google.ios.youtube" and re.fullmatch(r"[\w-]{11}", cid):
+            return f"https://www.youtube.com/watch?v={cid}"
+        if app == "com.netflix.Netflix" and re.fullmatch(r"\d{5,}", cid):
+            return f"https://www.netflix.com/title/{cid}"
+        if app == "com.apple.TVWatchList" and cid.startswith("umc."):
+            return f"https://tv.apple.com/show/{cid}"
+        return app or None
+
+    # ---- sleep timer ----
+    async def sleep_set(self, minutes):
+        if self.sleep_task:
+            self.sleep_task.cancel()
+            self.sleep_task = None
+        self.sleep_at = None
+        if not minutes:
+            return
+        self.sleep_at = time.time() + minutes * 60
+
+        async def run():
+            try:
+                await asyncio.sleep(minutes * 60)
+                if self.atv is not None:
+                    try:
+                        await self.atv.power.turn_off()
+                    except Exception:
+                        await self.atv.remote_control.suspend()
+            finally:
+                self.sleep_at = None
+                self.sleep_task = None
+        self.sleep_task = asyncio.get_event_loop().create_task(run())
+
+    # ---- kid mode ----
+    @staticmethod
+    def pin_hash(pin):
+        return hashlib.sha256(("clicker-kid:" + str(pin).strip()).encode()).hexdigest()
+
+    def kid_check(self, pin):
+        return bool(self.prefs.get("kid_pin")) and self.pin_hash(pin) == self.prefs.get("kid_pin")
+
+    # ---- party mode ----
+    def party_token(self):
+        return self.prefs.get("party_token")
+
+    def party_url(self, port):
+        ips = []
+        try:
+            import ifaddr
+            for a in ifaddr.get_adapters():
+                for ip in a.ips:
+                    if isinstance(ip.ip, str) and ipaddress.ip_address(ip.ip).is_private and not ip.ip.startswith("127."):
+                        ips.append(ip.ip)
+        except Exception:
+            pass
+        ips.sort(key=lambda x: (not x.startswith("192.168."), not x.startswith("10."), x))
+        tok = self.party_token()
+        return f"http://{ips[0]}:{port}/?party={tok}" if ips and tok else None
 
     def load_prefs(self):
         try:
@@ -290,7 +387,9 @@ class State:
                 "position": playing.position,
                 "total": playing.total_time,
                 "mediaType": playing.media_type.name.lower(),
+                "contentId": getattr(playing, "content_identifier", None),
             }
+            self.record_history(out["playing"], getattr(self.atv.metadata, "app", None))
         except Exception as e:  # metadata is best-effort
             out["playing"] = None
             out["playingError"] = str(e)
@@ -303,6 +402,8 @@ class State:
             out["power"] = self.atv.power.power_state.name.lower()
         except Exception:
             out["power"] = None
+        out["sleepAt"] = self.sleep_at
+        out["kidMode"] = bool(self.prefs.get("kid_mode"))
         return out
 
 
@@ -1049,6 +1150,100 @@ def routes(state: State):
             return json_error(f"Lookup failed: {e}", 500)
         return web.json_response({"ok": True, **data})
 
+    @r.get("/api/history")
+    async def history(_):
+        items = [{**h, "link": state.deep_link(h)} for h in state.history[:5]]
+        return web.json_response({"ok": True, "items": items})
+
+    @r.post("/api/history/remove")
+    async def history_remove(req):
+        body = await req.json()
+        key = (body.get("series") or body.get("title"), body.get("app"))
+        state.history = [h for h in state.history if (h.get("series") or h.get("title"), h.get("app")) != key]
+        try:
+            state.history_path.write_text(json.dumps(state.history))
+        except Exception:
+            pass
+        return web.json_response({"ok": True})
+
+    @r.post("/api/sleep")
+    async def sleep(req):
+        body = await req.json()
+        try:
+            await state.sleep_set(int(body.get("minutes") or 0))
+        except Exception as e:
+            return json_error(str(e))
+        return web.json_response({"ok": True, "sleepAt": state.sleep_at})
+
+    @r.post("/api/search")
+    async def search(req):
+        atv = need_device()
+        body = await req.json()
+        q = (body.get("q") or "").strip()
+        if not q:
+            return json_error("Type something to search for.")
+        try:
+            await atv.apps.launch_app("com.apple.TVSearch")
+            await asyncio.sleep(3.0)
+            await atv.keyboard.text_set(q)
+            await asyncio.sleep(0.8)
+            await atv.remote_control.select()
+        except exceptions.NotSupportedError:
+            return json_error("Search needs the apps pairing.", 501)
+        except Exception as e:
+            return json_error(f"Search failed: {e}", 500)
+        return web.json_response({"ok": True})
+
+    @r.get("/api/kid")
+    async def kid_get(_):
+        return web.json_response({"ok": True, "on": bool(state.prefs.get("kid_mode")), "hasPin": bool(state.prefs.get("kid_pin"))})
+
+    @r.post("/api/kid")
+    async def kid_set(req):
+        body = await req.json()
+        pin = str(body.get("pin") or "").strip()
+        if body.get("on"):
+            if not state.prefs.get("kid_pin"):
+                if not re.fullmatch(r"\d{4,8}", pin):
+                    return json_error("Choose a PIN of 4 to 8 digits first.")
+                state.prefs["kid_pin"] = state.pin_hash(pin)
+            state.prefs["kid_mode"] = True
+        else:
+            if not state.kid_check(pin):
+                return json_error("Wrong PIN.", 403)
+            state.prefs["kid_mode"] = False
+        if body.get("newPin") is not None and (not state.prefs.get("kid_mode") or state.kid_check(pin)):
+            np_ = str(body.get("newPin")).strip()
+            if not re.fullmatch(r"\d{4,8}", np_):
+                return json_error("A PIN is 4 to 8 digits.")
+            state.prefs["kid_pin"] = state.pin_hash(np_)
+        state.save_prefs()
+        return await kid_get(req)
+
+    @r.get("/api/party")
+    async def party_get(req):
+        return web.json_response({"ok": True, "on": bool(state.party_token()), "url": state.party_url(req.url.port or PORT)})
+
+    @r.post("/api/party")
+    async def party_set(req):
+        body = await req.json()
+        if body.get("on"):
+            if not state.party_token():
+                state.prefs["party_token"] = secrets.token_urlsafe(12)
+        else:
+            state.prefs.pop("party_token", None)
+        state.save_prefs()
+        return await party_get(req)
+
+    @r.get("/api/party/qr")
+    async def party_qr(req):
+        url = state.party_url(req.url.port or PORT)
+        if not url:
+            return json_error("Party mode is off.")
+        import segno
+        svg = segno.make(url, error="m").svg_inline(scale=6, dark="#000", light=None)
+        return web.Response(text=svg, content_type="image/svg+xml", headers={"Cache-Control": "no-store"})
+
     @r.get("/api/update/check")
     async def update_check(req):
         return web.json_response({"ok": True, **(await state.updater.check(force=req.query.get("force") == "1"))})
@@ -1076,9 +1271,39 @@ def routes(state: State):
     return r
 
 
+KID_BLOCKED = {"/api/prefs", "/api/quit", "/api/update/apply", "/api/text", "/api/search", "/api/party", "/api/forget",
+               "/api/pair/start", "/api/pair/finish", "/api/disconnect", "/api/launch", "/api/sleep", "/api/history/remove"}
+
+
+@web.middleware
+async def party_gate(request, handler):
+    """Localhost always works. Other devices on the Wi-Fi need party mode on and the scanned token."""
+    peer = request.remote or ""
+    try:
+        local = ipaddress.ip_address(peer).is_loopback
+    except ValueError:
+        local = peer in ("localhost", "")
+    state = request.app["state"]
+    if state.prefs.get("kid_mode") and request.method == "POST" and request.path in KID_BLOCKED:
+        return web.json_response({"ok": False, "error": "Kid mode is on. Unlock it with the PIN first."}, status=423)
+    if local:
+        return await handler(request)
+    tok = state.party_token()
+    if tok and request.cookies.get("clicker_party") == tok:
+        return await handler(request)
+    if tok and request.query.get("party") == tok:
+        resp = web.HTTPFound("/")
+        resp.set_cookie("clicker_party", tok, max_age=30 * 86400, httponly=True, samesite="Lax")
+        return resp
+    if request.path.startswith("/api/"):
+        return web.json_response({"ok": False, "error": "Party mode is off on the host Mac."}, status=403)
+    return web.Response(text="<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><body style='font:17px -apple-system,sans-serif;background:#0b0c0f;color:#e8e9ec;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px'><div><div style='font-size:44px'>🎉</div><h2>Party mode is off</h2><p style='color:#8b909c'>Ask whoever runs Clicker to turn on Party mode in Settings and scan the code again.</p></div></body>", content_type="text/html", status=403)
+
+
 async def make_app(state: State):
     await state.init_storage()
-    app = web.Application()
+    app = web.Application(middlewares=[party_gate])
+    app["state"] = state
     app.add_routes(routes(state))
 
     async def auto_connect():

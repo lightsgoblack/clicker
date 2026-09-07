@@ -398,6 +398,29 @@ html[data-theme="owens"] .chip,html[data-theme="owens"] .icon-btn,html[data-them
 html[data-theme="owens"] .bar{height:1px;background:var(--border)} html[data-theme="owens"] .bar i{background:var(--accent)}
 html[data-theme="owens"] footer{font-style:italic}
 @media (prefers-reduced-motion:reduce){html[data-theme="owens"] *,html[data-theme="vhs"] body,html[data-theme="vhs"] body::after,html[data-theme="lateshow"] body::before,html[data-theme="reactive"] body::before,html[data-theme="reactive"] .np .art{animation:none!important}}
+/* Kid mode: remote + favorites only */
+html[data-kid] #editBtn,html[data-kid] #settingsBtn,html[data-kid] #partyBtn,html[data-kid] #themeBtn,html[data-kid] #devChip,html[data-kid] #favEditToggle,html[data-kid] #aboutBtn,html[data-kid] .type,html[data-kid] .type + .hint,html[data-kid] #findForm,html[data-kid] #findForm + .hint,html[data-kid] .sleep,html[data-kid] .cwt .x,html[data-kid] .tile.add,html[data-kid] #layoutBtn,html[data-kid] footer kbd,html[data-kid] [data-cmd="power"],html[data-kid] #updBanner{display:none!important}
+html[data-kid] #kidChip{background:var(--accent-soft);border-color:var(--accent);color:var(--text)}
+html[data-kid] #npCard{cursor:default}
+/* Sleep timer */
+.sleep{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);width:100%;flex-wrap:wrap}
+.sleep-l{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.sleep-opts button{padding:6px 10px;font-size:12px}
+.sleep.on .sleep-l{color:var(--accent);text-transform:none;letter-spacing:0;font-size:14px;font-variant-numeric:tabular-nums}
+/* Continue watching */
+.cw{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.cw::-webkit-scrollbar{display:none}
+.cwt{position:relative;flex:0 0 150px;text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center;transition:background .08s}
+.cwt:hover{background:var(--surface3)} .cwt:active{border-color:var(--accent)}
+.cwt .ico{width:38px;height:38px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text);font-weight:700}
+.cwt .t{min-width:0;flex:1}
+.cwt .t b{display:block;font-size:12.5px;line-height:1.25;max-height:2.5em;overflow:hidden}
+.cwt .t small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.cwt .x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);color:var(--muted);font-size:12px;display:none;align-items:center;justify-content:center}
+.cwt:hover .x{display:flex}
+.cwt .pb{position:absolute;left:10px;right:10px;bottom:5px;height:2px;background:var(--surface3);border-radius:1px}.cwt .pb i{display:block;height:100%;background:var(--accent)}
+/* Party */
+.qr{background:#fff;padding:14px;border-radius:16px;display:inline-block;margin:10px auto}.qr svg{display:block;width:220px;height:220px}
+.party-url{font:12px ui-monospace,Menlo,monospace;color:var(--muted);word-break:break-all;text-align:center;margin-top:6px}
 /* Theme picker */
 .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
 .themes button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px;border-radius:14px;border:1px solid var(--border);background:var(--surface2);font-size:12px;font-weight:600;color:var(--muted)}
@@ -587,9 +610,11 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
   <header>
     <div class="brand"><svg class="mark" viewBox="0 0 48 48" width="30" height="30"><rect class="mk-bg" width="48" height="48" rx="13" fill="var(--bg)" stroke="var(--border2)"/><path d="M24 5C34 14 34 34 24 43 14 34 14 14 24 5Z" fill="var(--text)"/><circle cx="24" cy="24" r="10.5" fill="var(--accent)"/><circle cx="24" cy="24" r="6.2" fill="var(--bg)"/><circle cx="24" cy="24" r="2" fill="var(--accent)"/><circle cx="26.4" cy="21.4" r="1.3" fill="var(--text)"/></svg><span class="full">Colin's Cool Crazy Couch Computer Clicker</span><span class="short">C⁶ Clicker</span></div>
     <div class="spacer"></div>
+    <button class="chip" id="kidChip" hidden title="Kid mode is on. Tap to unlock."><span>🔒 Kid mode</span></button>
     <button class="chip" id="devChip" title="Devices"><i class="dot"></i><span id="devName">Not connected</span></button>
     <button class="icon-btn" id="editBtn" title="Edit favorites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
     <button class="icon-btn" id="themeBtn" title="Toggle light / dark"><svg id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg id="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+    <button class="icon-btn" id="partyBtn" title="Party mode: share the remote with phones on this Wi-Fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v3M14 21h3M21 21h-1"/></svg></button>
     <button class="icon-btn" id="settingsBtn" title="Settings and shortcuts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
   </header>
 
@@ -656,6 +681,11 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
           <button class="key" data-cmd="next" title="Next"><svg viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/></svg></button>
         </div>
       </div>
+      <div class="sleep" id="sleep">
+        <span class="sleep-l" id="sleepLabel">Sleep in</span>
+        <span class="seg sleep-opts" id="sleepOpts"><button data-m="15">15</button><button data-m="30">30</button><button data-m="45">45</button><button data-m="60">60</button><button data-m="90">90</button></span>
+        <button class="btn sm" id="sleepCancel" hidden>Cancel</button>
+      </div>
     </section>
 
     <div style="display:flex;flex-direction:column;gap:18px">
@@ -670,6 +700,12 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
             <div class="bar" id="npBar" hidden><i id="npFill"></i></div>
           </div>
         </div>
+      </section>
+
+      <!-- CONTINUE WATCHING -->
+      <section class="card" id="cwCard" hidden>
+        <h2>Continue watching</h2>
+        <div class="cw" id="cw"></div>
       </section>
 
       <!-- FAVORITES -->
@@ -688,6 +724,11 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
           <button class="btn" type="button" id="typeClear" title="Clear the field on the TV">Clear</button>
         </form>
         <div class="hint">Works when a text field is focused on the Apple TV (search boxes, sign-in screens). Needs the "apps" pairing.</div>
+        <form class="type" id="findForm" style="margin-top:12px">
+          <input id="findInput" placeholder="Find on TV: a show, a movie, a person…" autocomplete="off" autocapitalize="off">
+          <button class="btn primary" type="submit">Find</button>
+        </form>
+        <div class="hint">Opens the TV's Search, types it, and presses Select for you.</div>
       </section>
     </div>
   </div>
@@ -889,6 +930,7 @@ function renderStatus(st) {
   $('#aboutBtn').hidden = !playingCtx(st);
   renderUpdate(st);
   if (activeFx && activeFx.apply) activeFx.apply(st);
+  renderSleep(st); loadHistory(); renderKid(st);
   if (activeFx === FX.ransom) ransomize(true);
   const chip = $('#devChip'); chip.classList.toggle('on', S.connected);
   $('#devName').textContent = S.connected ? st.device.name : 'Not connected';
@@ -1000,6 +1042,7 @@ const CATALOG = [
   { label: 'Sleep', icon: 'sleep', kind: 'cmd', value: 'suspend' },
   { label: 'Wake', icon: 'wake', kind: 'cmd', value: 'wakeup' },
   { label: 'Top menu', icon: 'topmenu', kind: 'cmd', value: 'top_menu' },
+  { label: 'Bedtime', icon: 'sleep', kind: 'seq', value: 'home\nwait 600\nsuspend' },
 ];
 const KIND_LABEL = { app: 'app', link: 'link', text: 'text', cmd: 'button', seq: 'macro' };
 const DEFAULT_FAVS = ['Apple TV', 'Netflix', 'YouTube', 'Settings', 'Screensaver'].map(l => Object.assign({ id: uid() }, CATALOG.find(c => c.label === l)));
@@ -1169,6 +1212,90 @@ async function connect(d, quiet) {
   catch (e) { toast(e.message, 'err'); }
 }
 $('#devChip').onclick = openDevices; $('#bannerBtn').onclick = openDevices;
+
+// ---------- Sleep timer ----------
+let sleepTick = null;
+function renderSleep(st) {
+  const at = st && st.sleepAt; const el = $('#sleep'); clearInterval(sleepTick);
+  if (!S.connected) { el.hidden = true; return; } el.hidden = false;
+  if (!at) { el.classList.remove('on'); $('#sleepLabel').textContent = 'Sleep in'; $('#sleepOpts').hidden = false; $('#sleepCancel').hidden = true; return; }
+  el.classList.add('on'); $('#sleepOpts').hidden = true; $('#sleepCancel').hidden = false;
+  const draw = () => { const s = Math.max(0, Math.round(at - Date.now() / 1000)); $('#sleepLabel').textContent = 'TV sleeps in ' + fmt(s); if (s <= 0) clearInterval(sleepTick); };
+  draw(); sleepTick = setInterval(draw, 1000);
+}
+$$('#sleepOpts button').forEach(b => b.onclick = async () => { try { const r = await api('sleep', { minutes: +b.dataset.m }); toast('TV will sleep in ' + b.dataset.m + ' min'); renderSleep({ sleepAt: r.sleepAt }); } catch (e) { toast(e.message, 'err'); } });
+$('#sleepCancel').onclick = async () => { try { await api('sleep', { minutes: 0 }); toast('Sleep timer off'); renderSleep({ sleepAt: null }); } catch (e) { toast(e.message, 'err'); } };
+
+// ---------- Continue watching ----------
+let cwKey = '';
+async function loadHistory() {
+  if (!S.connected) { $('#cwCard').hidden = true; return; }
+  let items = [];
+  try { items = (await api('history')).items || []; } catch { return; }
+  const key = JSON.stringify(items.map(i => [i.title, i.app, i.position]));
+  if (key === cwKey) return; cwKey = key;
+  const root = $('#cw'); root.innerHTML = '';
+  $('#cwCard').hidden = !items.length;
+  items.forEach(it => {
+    const b = document.createElement('button'); b.className = 'cwt'; b.title = (it.link && it.link.startsWith('http')) ? 'Jump back in' : 'Open ' + (it.appName || 'app');
+    const c = CATALOG.find(x => x.value === it.app);
+    b.appendChild(iconEl({ icon: c ? c.icon : '', label: it.appName || '?', value: it.app, kind: 'app' }));
+    const tt = document.createElement('div'); tt.className = 't';
+    const bb = document.createElement('b'); bb.textContent = it.series && it.series !== it.title ? it.series : it.title; tt.appendChild(bb);
+    const sm = document.createElement('small'); sm.textContent = [it.series && it.series !== it.title ? it.title : '', it.season != null && it.episode != null ? 'S' + it.season + 'E' + it.episode : '', it.appName].filter(Boolean).join(' · '); tt.appendChild(sm);
+    b.appendChild(tt);
+    if (it.total && it.position) { const pb = document.createElement('div'); pb.className = 'pb'; pb.innerHTML = '<i></i>'; pb.firstChild.style.width = Math.min(100, it.position / it.total * 100) + '%'; b.appendChild(pb); }
+    const x = document.createElement('span'); x.className = 'x'; x.textContent = '×'; x.title = 'Remove'; b.appendChild(x);
+    b.onclick = async (e) => {
+      if (e.target === x) { try { await api('history/remove', { title: it.title, series: it.series, app: it.app }); cwKey = ''; loadHistory(); } catch (err) { toast(err.message, 'err'); } return; }
+      if (!it.link) { toast('No app to reopen for this one'); return; }
+      try { await api('launch', { target: it.link }); toast((it.link.startsWith('http') ? 'Jumping back into ' : 'Opening ') + (it.appName || '')); } catch (err) { toast(err.message, 'err'); }
+    };
+    root.appendChild(b);
+  });
+}
+setInterval(() => { if (!document.hidden) loadHistory(); }, 20000);
+
+// ---------- Find on TV ----------
+$('#findForm').onsubmit = async e => { e.preventDefault(); const q = $('#findInput').value.trim(); if (!q) return; const btn = e.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Finding…'; try { await api('search', { q }); toast('Searching the TV for "' + q + '"', 'ok'); $('#findInput').value = ''; } catch (err) { toast(err.message, 'err'); } btn.disabled = false; btn.textContent = 'Find'; };
+
+// ---------- Kid mode ----------
+function renderKid(st) { const on = !!(st && st.kidMode); html.toggleAttribute('data-kid', on); $('#kidChip').hidden = !on; if (on && S.sheet && !S.sheet.dataset.kid) closeSheet(); if (on && S.editing) setEditing(false); }
+function pinPrompt(title, sub, cb) {
+  const node = sheetTop(title, sub); const f = document.createElement('div'); f.className = 'pin'; f.style.justifyContent = 'center';
+  f.innerHTML = '<input inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="PIN" autofocus><button class="btn primary sm">OK</button>';
+  node.appendChild(f); const sheet = openSheet(node); sheet.dataset.kid = '1';
+  const inp = f.querySelector('input'), go = f.querySelector('button'); inp.focus();
+  const done = () => { const v = inp.value.trim(); if (!v) return; cb(v); };
+  go.onclick = done; inp.onkeydown = e => { if (e.key === 'Enter') done(); };
+}
+$('#kidChip').onclick = () => pinPrompt('Unlock', 'Enter the grown-up PIN to leave Kid mode.', async pin => { try { await api('kid', { on: false, pin }); closeSheet(); toast('Kid mode off', 'ok'); refresh(); } catch (e) { toast(e.message, 'err'); } });
+async function kidOn() {
+  let k; try { k = await api('kid'); } catch (e) { toast(e.message, 'err'); return; }
+  const go = async pin => { try { await api('kid', { on: true, pin }); closeSheet(); toast('Kid mode on. Remote and favorites only.', 'ok'); refresh(); } catch (e) { toast(e.message, 'err'); } };
+  if (k.hasPin) go(''); else pinPrompt('Choose a PIN', 'Four to eight digits. You will need it to turn Kid mode off.', go);
+}
+
+// ---------- Party mode ----------
+async function openParty() {
+  const node = sheetTop('Party mode', 'Turn it on, and anyone on this Wi-Fi can scan the code to get the remote on their phone. No install, no pairing. Turn it off and every phone is locked out again.');
+  const box = document.createElement('div'); box.style.textAlign = 'center'; node.appendChild(box); openSheet(node);
+  const draw = async () => {
+    let p; try { p = await api('party'); } catch (e) { box.innerHTML = `<div class="empty">${e.message}</div>`; return; }
+    box.innerHTML = `<div class="seg" style="justify-content:center;margin-bottom:6px"><button data-v="0">Off</button><button data-v="1">On</button></div>`;
+    $$('button', box).forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === p.on); b.onclick = async () => { try { await api('party', { on: b.dataset.v === '1' }); toast(b.dataset.v === '1' ? 'Party mode on' : 'Party mode off, phones locked out'); draw(); } catch (e) { toast(e.message, 'err'); } }; });
+    if (p.on && p.url) {
+      const q = document.createElement('div'); q.className = 'qr'; box.appendChild(q);
+      try { q.innerHTML = await (await fetch('/api/party/qr')).text(); } catch { q.textContent = 'QR unavailable'; }
+      const u = document.createElement('div'); u.className = 'party-url'; u.textContent = p.url; box.appendChild(u);
+      const h = document.createElement('div'); h.className = 'hint'; h.style.textAlign = 'center'; h.textContent = 'Phones need to be on the same Wi-Fi as this Mac, and this Mac needs to stay awake.'; box.appendChild(h);
+    } else if (p.on) {
+      box.innerHTML += '<div class="empty">Could not find this Mac\u2019s Wi-Fi address.</div>';
+    }
+  };
+  draw();
+}
+$('#partyBtn').onclick = openParty;
 
 // ---------- Updates ----------
 const UPD = { dismissed: store.get('upd_dismissed', ''), applying: false, fromVersion: null };
@@ -1356,6 +1483,8 @@ function openSettings() {
     <div style="display:flex;gap:8px;margin:-4px 0 12px"><input type="password" data-key placeholder="sk-ant-…" autocomplete="off" style="flex:1"><button class="btn sm primary" data-key-save>Save</button><button class="btn sm danger" data-key-clear>Remove</button></div>
     <div class="setting"><div class="t"><b>Updates</b><small data-ver>Checking version…</small></div><button class="btn sm" data-check>Check for updates</button></div>
     <div class="setting"><div class="t"><b>Check automatically</b><small>Once a day, Clicker asks GitHub whether a newer release exists. That request carries nothing about you or what you watch.</small></div><div class="seg" data-upd-seg><button data-v="0">Off</button><button data-v="1">On</button></div></div>
+    <div class="setting"><div class="t"><b>Kid mode</b><small>Remote and favorites only: no settings, no typing, no power, no editing, no About. A PIN turns it off.</small></div><button class="btn sm primary" data-kid-on>Turn on</button></div>
+    <div class="setting"><div class="t"><b>Kid mode PIN</b><small data-kid-hint>Not set yet. You choose one the first time you turn Kid mode on.</small></div><button class="btn sm" data-kid-pin>Change PIN</button></div>
     <div class="setting"><div class="t"><b>Quit Clicker</b><small>Stops the server on the Mac. Open the app again to come back.</small></div><button class="btn sm danger" data-quit>Quit</button></div>
     <div class="setting"><div class="t"><b>Keyboard shortcuts</b><small>Work whenever you are not typing in a field.</small></div></div>
     <div class="shortcuts">
@@ -1391,6 +1520,12 @@ function openSettings() {
   $$('[data-info-seg] button', node).forEach(b => b.onclick = async () => { try { await savePrefs({ infoEnabled: b.dataset.v === '1' }); infoSync(); } catch (e) { toast(e.message, 'err'); } });
   node.querySelector('[data-key-save]').onclick = async () => { const v = node.querySelector('[data-key]').value.trim(); if (!v) { toast('Paste a key first', 'err'); return; } try { await savePrefs({ anthropicKey: v, infoEnabled: true, factsSource: 'own' }); node.querySelector('[data-key]').value = ''; infoSync(); toast('Key saved, using it for facts', 'ok'); } catch (e) { toast(e.message, 'err'); } };
   node.querySelector('[data-key-clear]').onclick = async () => { try { await savePrefs({ anthropicKey: '', factsSource: 'hosted' }); infoSync(); toast('Key removed, back to Colin\'s service'); } catch (e) { toast(e.message, 'err'); } };
+  node.querySelector('[data-kid-on]').onclick = kidOn;
+  api('kid').then(k => { node.querySelector('[data-kid-hint]').textContent = k.hasPin ? 'A PIN is set.' : 'Not set yet. You choose one the first time you turn Kid mode on.'; }).catch(() => {});
+  node.querySelector('[data-kid-pin]').onclick = () => api('kid').then(k => {
+    const setNew = (old) => pinPrompt('New PIN', 'Four to eight digits.', async np => { try { await api('kid', { on: false, pin: old, newPin: np }); closeSheet(); toast('PIN saved', 'ok'); } catch (e) { toast(e.message, 'err'); } });
+    if (k.hasPin) pinPrompt('Current PIN', 'Enter the current PIN first.', old => setNew(old)); else setNew('');
+  });
   node.querySelector('[data-quit]').onclick = async () => { if (!confirm('Quit Clicker? The remote stops working until you open the app again.')) return; try { await api('quit', {}); } catch {} closeSheet(); $('#bannerText').textContent = 'Clicker has quit. Open the app again to reconnect.'; $('#banner').hidden = false; clearInterval(pollTimer); };
   node.querySelector('[data-reset]').onclick = () => { if (confirm('Replace your favorites with the defaults?')) { favs = DEFAULT_FAVS.map(f => Object.assign({}, f, { id: uid() })); saveFavs(); ta.value = JSON.stringify(favs, null, 2); } };
   openSheet(node);

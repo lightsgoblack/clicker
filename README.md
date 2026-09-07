@@ -53,7 +53,7 @@ Nineteen of them. Dark (default) and Light. Five for when the lights are off: Ac
 
 **Apple Silicon Mac (2020 or later):** download the latest `Clicker-mac-arm64.zip` from the [Releases page](https://github.com/lightsgoblack/clicker/releases/latest), double-click the zip, and drag `Clicker` into your Applications folder. Python is included; nothing else to install.
 
-The first time you open it, macOS will say it cannot verify the app (it is not signed with a paid Apple developer certificate). Click **Done**, then open **System Settings, Privacy & Security**, scroll down, and click **Open Anyway** next to Clicker. That is a one-time step. After that it opens like any app.
+If macOS says it cannot verify the app, click **Done**, open **System Settings, Privacy & Security**, scroll down, and click **Open Anyway** next to Clicker. One-time step. Releases built with a Developer ID certificate are notarized and skip this entirely (see `build-app.sh`).
 
 **Intel Mac, or if you would rather not click through that warning:** paste this one line into Terminal (`Cmd+Space`, type Terminal, Return):
 
@@ -80,6 +80,15 @@ git clone https://github.com/lightsgoblack/clicker.git ~/Developer/clicker && ~/
 ```
 
 `mac/` holds the app-bundle pieces (`Info.plist`, `launcher.sh`, `AppIcon.icns`, regenerated from `icon.svg` with `qlmanage` + `iconutil`). `install.sh` assembles them into `~/Applications/Clicker.app`; set `CLICKER_SRC=/path/to/checkout` to build from a local copy instead of downloading. `build-app.sh` makes the self-contained PyInstaller build and zip for Releases (arch of the building Mac). To ship a version: bump `VERSION` in `server.py`, commit, then `./release.sh "what changed"` builds, tags, and publishes the release; installed apps pick it up on their next check.
+
+## More than a remote
+
+- **Continue watching.** The last five things you watched appear as a row. Tap one to jump back in (a real deep link for YouTube, Netflix, and Apple TV+; the app itself for everything else).
+- **Sleep timer.** Under the remote: 15, 30, 45, 60, or 90 minutes, then the TV goes to sleep. Runs on the Mac, so closing the tab does not cancel it.
+- **Bedtime.** A favorite in the Popular list: home, then sleep. Add your own steps to it as a macro.
+- **Find on TV.** Type a show, movie, or person; Clicker opens the TV's search, types it, and presses Select.
+- **Party mode.** The QR button in the header. Turn it on and anyone on your Wi-Fi scans the code to get the remote on their phone, no install or pairing. Turn it off and every phone is locked out. When it is off, only this Mac can reach the remote at all.
+- **Kid mode.** In Settings. Remote and favorites only: no settings, typing, power, editing, or About. A PIN you choose turns it off, and the server refuses the grown-up actions while it is on.
 
 ## About what's playing (optional)
 

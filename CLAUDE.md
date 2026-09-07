@@ -28,6 +28,10 @@ Display name is "Colin's Cool Crazy Couch Computer Clicker" (short: C⁶ Clicker
 
 - **Hosted facts** (`facts-service/`, Vercel project `clicker-facts`, Node function `api/facts.js`, `@anthropic-ai/sdk` 0.x): default source for facts; `prefs.facts_source` = hosted|own. Clicker sends `X-Clicker-Client` (required by the function as a scanner filter, not a secret). Meter is in-memory unless Upstash env vars exist; the REAL cap is the $2 monthly limit on Colin's dedicated Anthropic workspace. `ANTHROPIC_API_KEY` on Vercel must be added by Colin (`vercel env add`), never by a session. Deploy: `cd facts-service && vercel --prod --yes`.
 
+- **1.5.0 features:** history (`DATA_DIR/history.json`, recorded from status polls, deep links for YouTube/Netflix/Apple TV+ via `content_identifier`), sleep timer (server-side asyncio task, `sleepAt` in status), `/api/search` (launch TVSearch, wait 3s, text_set, select), party mode (`prefs.party_token`; `party_gate` middleware: loopback always allowed, LAN needs the cookie set by `?party=<token>`; QR via `segno`), kid mode (`prefs.kid_mode` + sha256 `kid_pin`; middleware 423s `KID_BLOCKED` POSTs; page hides chrome via `html[data-kid]`).
+- **Signing:** `build-app.sh` auto-detects a "Developer ID Application" identity and notarizes when the `clicker-notary` keychain profile exists (`xcrun notarytool store-credentials clicker-notary --apple-id … --team-id 2UL4LM7L55 --password <app-specific>`). Entitlements in `mac/entitlements.plist`. Colin has a paid developer account (Aeolian) but as of 2026-09-07 only an "Apple Development" cert in the keychain; the Developer ID cert must be created in Xcode > Settings > Accounts > Manage Certificates.
+- **Browser-pane gotcha:** `document.hidden` is true in the preview pane, so status polling pauses; verify state-driven UI by reloading, not by waiting for a poll.
+
 ## Verify
 - `.venv/bin/python server.py --demo --no-open` then drive the UI in a browser; `/api/demo/log` shows every command the fake device received.
 - Real-device behavior (does Netflix honor the link, does the TV respond to volume) cannot be verified headlessly. Say so.

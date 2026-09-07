@@ -16,6 +16,6 @@ if [ ! -x .venv/bin/python ]; then
     alert "Clicker needs Python 3. macOS will offer to install its Command Line Tools. Click Install, wait for it to finish, then open Clicker again."
     xcode-select --install >/dev/null 2>&1; exit 1
   fi
-  "$PY" -m venv .venv >>"$LOG" 2>&1 && .venv/bin/pip install --quiet pyatv anthropic >>"$LOG" 2>&1 || { alert "First-time setup failed. Details are in ~/Library/Logs/Clicker.log"; exit 1; }
+  "$PY" -m venv .venv >>"$LOG" 2>&1 && .venv/bin/pip install --quiet pyatv anthropic segno >>"$LOG" 2>&1 || { alert "First-time setup failed. Details are in ~/Library/Logs/Clicker.log"; exit 1; }
 fi
 nohup .venv/bin/python server.py --port "$PORT" >>"$LOG" 2>&1 &

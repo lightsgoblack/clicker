@@ -833,6 +833,7 @@ function openSheet(node) {
   const scrim = document.createElement('div'); scrim.className = 'scrim';
   const sheet = document.createElement('div'); sheet.className = 'sheet'; sheet.appendChild(node);
   scrim.appendChild(sheet); scrim.addEventListener('click', e => { if (e.target === scrim) closeSheet(); });
+  sheet.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); });
   $('#sheetRoot').appendChild(scrim); S.sheet = scrim;
   return sheet;
 }

@@ -1,0 +1,3 @@
+{
+  "functions": { "api/facts.js": { "maxDuration": 60 } }
+}

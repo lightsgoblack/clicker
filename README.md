@@ -85,9 +85,14 @@ git clone https://github.com/lightsgoblack/clicker.git ~/Developer/clicker && ~/
 
 Tap the Now Playing card, or the About button, for a panel about whatever is on: a Wikipedia summary with poster, and a "Rare but true" list of five surprising facts written by Claude.
 
-This is **off by default** because it is the one feature that talks to the internet. When on, the title of what you are watching (plus series, artist, and app name) is sent to Wikipedia, and to Anthropic's API if you have added a Claude API key. Nothing else is sent. Turn it on in Settings, or from the panel itself the first time.
+This is **off by default** because it is the one feature that talks to the internet. When on, the title of what you are watching (plus series, artist, and app name) is sent to Wikipedia, and to Colin's facts service or straight to Anthropic's API if you use your own key. Nothing else is sent. Turn it on in Settings, or from the panel itself the first time.
 
-The facts need a Claude API key from [console.anthropic.com](https://console.anthropic.com/). Paste it in Settings; it is stored only in Clicker's preferences file on this Mac. Each lookup costs about two cents and is cached, and "More facts" asks again. The facts are AI-written from Claude's knowledge, so verify before betting money on one.
+The facts come from Claude two ways, chosen in Settings:
+
+- **Colin's service** (default, no setup): a tiny budget-capped function Colin hosts (see `facts-service/`). It asks Claude and keeps nothing. When his monthly budget is used up it says so, and you can switch to your own key or wait for next month.
+- **Your own key** from [console.anthropic.com](https://console.anthropic.com/): paste it in Settings. It is stored only in Clicker's preferences file on this Mac, and each lookup costs you about two cents.
+
+Either way, results are cached, "More facts" asks again, and the facts are AI-written from Claude's knowledge, so verify before betting money on one.
 
 ## Updates
 

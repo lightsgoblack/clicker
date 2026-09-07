@@ -960,7 +960,7 @@ async function openAbout() {
   const body = document.createElement('div'); node.appendChild(body); openSheet(node);
   if (!prefs.infoEnabled) await loadPrefs();
   if (!prefs.infoEnabled) {
-    body.innerHTML = `<div class="about"><div class="t"><h4></h4><div class="d"></div><p>Looking this up sends the title of what you are watching to Wikipedia, and to Claude if you add an API key. Nothing else leaves your network, and it is off until you turn it on.</p></div></div><div class="actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" data-close>Not now</button><button class="btn primary" data-on>Turn on lookups</button></div>`;
+    body.innerHTML = `<div class="about"><div class="t"><h4></h4><div class="d"></div><p>Looking this up sends the title of what you are watching to Wikipedia, and to Colin's small facts service, which asks Claude and keeps nothing. Prefer your own Claude key? Switch it in Settings. Nothing else leaves your network, and it is off until you turn it on.</p></div></div><div class="actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" data-close>Not now</button><button class="btn primary" data-on>Turn on lookups</button></div>`;
     body.querySelector('h4').textContent = ctx.title; body.querySelector('.d').textContent = [ctx.series, ctx.artist, ctx.app].filter(Boolean).join(' · ');
     body.querySelector('[data-close]').onclick = closeSheet;
     body.querySelector('[data-on]').onclick = async () => { try { await savePrefs({ infoEnabled: true }); openAbout(); } catch (e) { toast(e.message, 'err'); } };
@@ -985,10 +985,13 @@ async function openAbout() {
     if (d.facts && d.facts.length) {
       const more = document.createElement('button'); more.textContent = 'More facts'; more.onclick = () => draw(true); sec.appendChild(more);
       const ul = document.createElement('ul'); ul.className = 'facts'; d.facts.forEach(f => { const li = document.createElement('li'); li.textContent = f; ul.appendChild(li); }); body.appendChild(ul);
-      const h = document.createElement('div'); h.className = 'hint'; h.textContent = 'Written by Claude from what it knows. Great at parties, but verify before betting money on one.'; body.appendChild(h);
+      const h = document.createElement('div'); h.className = 'hint';
+      let note = 'Written by Claude from what it knows. Great at parties, but verify before betting money on one.';
+      if (d.source === 'hosted' && d.meter && d.meter.budget) note += ` Colin's shared budget: $${Number(d.meter.spent || 0).toFixed(2)} of $${d.meter.budget} used this month.`;
+      h.textContent = note; body.appendChild(h);
     } else {
       const h = document.createElement('div'); h.className = 'hint';
-      if (d.factsError && /API key/i.test(d.factsError)) { h.innerHTML = 'The weird facts come from Claude and need an API key. <b>Add one in Settings</b> (about two cents per lookup).'; }
+      if (d.factsError && /API key/i.test(d.factsError)) { h.innerHTML = 'The weird facts come from Claude and need an API key. <b>Add one in Settings</b> (about two cents per lookup), or switch back to Colin\'s service there.'; }
       else h.textContent = d.factsError || 'No facts came back.';
       body.appendChild(h);
     }
@@ -1089,6 +1092,7 @@ function openSettings() {
     <textarea class="code" data-json></textarea>
     <div class="actions" style="display:flex;gap:8px;justify-content:flex-end;margin:8px 0 14px"><button class="btn sm" data-copy>Copy</button><button class="btn sm" data-import>Import</button><button class="btn sm danger" data-reset>Reset to defaults</button></div>
     <div class="setting"><div class="t"><b>About what's playing</b><small>Tap the Now Playing card for a Wikipedia summary and rare facts. Sends the title of what you are watching to Wikipedia, and to Claude if a key is set. Off by default.</small></div><div class="seg" data-info-seg><button data-v="0">Off</button><button data-v="1">On</button></div></div>
+    <div class="setting"><div class="t"><b>Rare facts come from</b><small>Colin's service is free to you and capped at his monthly budget. Your own key bills you directly, about two cents per lookup.</small></div><div class="seg" data-facts-seg><button data-v="hosted">Colin's service</button><button data-v="own">My own key</button></div></div>
     <div class="setting" data-key-row><div class="t"><b>Claude API key</b><small data-key-hint>Optional. Powers the rare facts. Stored only on this Mac. About two cents per lookup.</small></div></div>
     <div style="display:flex;gap:8px;margin:-4px 0 12px"><input type="password" data-key placeholder="sk-ant-…" autocomplete="off" style="flex:1"><button class="btn sm primary" data-key-save>Save</button><button class="btn sm danger" data-key-clear>Remove</button></div>
     <div class="setting"><div class="t"><b>Updates</b><small data-ver>Checking version…</small></div><button class="btn sm" data-check>Check for updates</button></div>
@@ -1121,11 +1125,13 @@ function openSettings() {
   const updSync = () => { $$('[data-upd-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (prefs.updateCheck === false ? '0' : '1'))); node.querySelector('[data-ver]').textContent = `Version ${prefs.version || (S.status && S.status.version) || '?'}` + (S.status && S.status.update && S.status.update.latest ? ` · ${S.status.update.latest} is available` : ''); };
   $$('[data-upd-seg] button', node).forEach(b => b.onclick = async () => { try { await savePrefs({ updateCheck: b.dataset.v === '1' }); updSync(); } catch (e) { toast(e.message, 'err'); } });
   node.querySelector('[data-check]').onclick = () => checkUpdates(node.querySelector('[data-check]'));
-  const infoSync = () => { updSync(); $$('[data-info-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (prefs.infoEnabled ? '1' : '0'))); node.querySelector('[data-key-hint]').textContent = prefs.hasKey ? `Key saved (${prefs.keyHint}). Powers the rare facts. About two cents per lookup.` : 'Optional. Powers the rare facts. Stored only on this Mac. About two cents per lookup.'; node.querySelector('[data-key-clear]').hidden = !prefs.hasKey; };
+  const factsSync = () => { $$('[data-facts-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (prefs.factsSource || 'hosted'))); };
+  $$('[data-facts-seg] button', node).forEach(b => b.onclick = async () => { if (b.dataset.v === 'own' && !prefs.hasKey) { toast('Save a key below first', 'err'); node.querySelector('[data-key]').focus(); return; } try { await savePrefs({ factsSource: b.dataset.v }); factsSync(); } catch (e) { toast(e.message, 'err'); } });
+  const infoSync = () => { updSync(); factsSync(); $$('[data-info-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === (prefs.infoEnabled ? '1' : '0'))); node.querySelector('[data-key-hint]').textContent = prefs.hasKey ? `Key saved (${prefs.keyHint}). Powers the rare facts. About two cents per lookup.` : 'Optional. Powers the rare facts. Stored only on this Mac. About two cents per lookup.'; node.querySelector('[data-key-clear]').hidden = !prefs.hasKey; };
   loadPrefs().then(infoSync); infoSync();
   $$('[data-info-seg] button', node).forEach(b => b.onclick = async () => { try { await savePrefs({ infoEnabled: b.dataset.v === '1' }); infoSync(); } catch (e) { toast(e.message, 'err'); } });
-  node.querySelector('[data-key-save]').onclick = async () => { const v = node.querySelector('[data-key]').value.trim(); if (!v) { toast('Paste a key first', 'err'); return; } try { await savePrefs({ anthropicKey: v, infoEnabled: true }); node.querySelector('[data-key]').value = ''; infoSync(); toast('Key saved', 'ok'); } catch (e) { toast(e.message, 'err'); } };
-  node.querySelector('[data-key-clear]').onclick = async () => { try { await savePrefs({ anthropicKey: '' }); infoSync(); toast('Key removed'); } catch (e) { toast(e.message, 'err'); } };
+  node.querySelector('[data-key-save]').onclick = async () => { const v = node.querySelector('[data-key]').value.trim(); if (!v) { toast('Paste a key first', 'err'); return; } try { await savePrefs({ anthropicKey: v, infoEnabled: true, factsSource: 'own' }); node.querySelector('[data-key]').value = ''; infoSync(); toast('Key saved, using it for facts', 'ok'); } catch (e) { toast(e.message, 'err'); } };
+  node.querySelector('[data-key-clear]').onclick = async () => { try { await savePrefs({ anthropicKey: '', factsSource: 'hosted' }); infoSync(); toast('Key removed, back to Colin\'s service'); } catch (e) { toast(e.message, 'err'); } };
   node.querySelector('[data-quit]').onclick = async () => { if (!confirm('Quit Clicker? The remote stops working until you open the app again.')) return; try { await api('quit', {}); } catch {} closeSheet(); $('#bannerText').textContent = 'Clicker has quit. Open the app again to reconnect.'; $('#banner').hidden = false; clearInterval(pollTimer); };
   node.querySelector('[data-reset]').onclick = () => { if (confirm('Replace your favorites with the defaults?')) { favs = DEFAULT_FAVS.map(f => Object.assign({}, f, { id: uid() })); saveFavs(); ta.value = JSON.stringify(favs, null, 2); } };
   openSheet(node);

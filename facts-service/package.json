@@ -1,0 +1,9 @@
+{
+  "name": "clicker-facts",
+  "private": true,
+  "type": "module",
+  "description": "Tiny facts service for Colin's Cool Crazy Couch Computer Clicker",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0"
+  }
+}

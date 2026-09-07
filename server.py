@@ -43,7 +43,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -439,6 +439,7 @@ class DemoDevice:
 
 WIKI_UA = "Clicker/1.0 (https://github.com/lightsgoblack/clicker; local Apple TV remote, personal use)"
 FACTS_MODEL = "claude-opus-5"
+FACTS_SERVICE_URL = "https://clicker-facts.vercel.app/api/facts"  # Colin-hosted, budget-capped; see facts-service/
 FACTS_SYSTEM = (
     "You write trivia for a living-room TV remote app. The user tells you what is on screen "
     "(a show, film, video, song, or channel). Reply with 5 genuinely surprising, specific, "
@@ -454,6 +455,7 @@ class InfoService:
     def __init__(self, state):
         self.state = state
         self.cache = OrderedDict()  # key -> dict, small LRU
+        self.hosted_meter = None
 
     def _remember(self, key, value):
         self.cache[key] = value
@@ -544,8 +546,40 @@ class InfoService:
             log.info("lead image failed for %r: %s", title, e)
             return None
 
-    async def facts(self, ctx):
-        """Five rare facts from Claude. Uses the stored key, else the SDK's own credential lookup."""
+    def facts_source(self):
+        """'own' when the user chose their key (and has one), else 'hosted'."""
+        src = self.state.prefs.get("facts_source") or "hosted"
+        if src == "own" and not self.state.prefs.get("anthropic_key"):
+            return "hosted"
+        return src
+
+    async def facts_hosted(self, ctx, fresh=False):
+        """Five rare facts via Colin's budget-capped service (no key needed)."""
+        payload = {**ctx, "fresh": bool(fresh)}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(FACTS_SERVICE_URL, json=payload,
+                                        headers={"X-Clicker-Client": APP_VERSION, "User-Agent": WIKI_UA},
+                                        timeout=aiohttp.ClientTimeout(total=75)) as r:
+                    try:
+                        d = await r.json()
+                    except Exception:
+                        d = {}
+        except Exception:
+            raise RuntimeError("Could not reach the facts service. Check the internet connection.")
+        if not d.get("ok"):
+            code = d.get("code")
+            msg = d.get("error") or f"Facts service error (HTTP {r.status})."
+            if code == "unconfigured":
+                msg = "The shared facts service is not switched on yet. Add your own key in Settings, or try later."
+            raise RuntimeError(msg)
+        self.hosted_meter = {"spent": d.get("spent"), "budget": d.get("budget")}
+        return d.get("facts") or []
+
+    async def facts(self, ctx, fresh=False):
+        """Five rare facts from Claude: hosted service by default, or the user's own key."""
+        if self.facts_source() == "hosted":
+            return await self.facts_hosted(ctx, fresh)
         import anthropic
         key = self.state.prefs.get("anthropic_key") or None
         try:
@@ -625,11 +659,13 @@ class InfoService:
                     out["wiki"] = hit
                     break
         try:
-            out["facts"] = await self.facts(ctx)
+            out["facts"] = await self.facts(ctx, fresh)
         except RuntimeError as e:
             out["factsError"] = str(e)
         except Exception as e:
             out["factsError"] = f"Facts unavailable: {e}"
+        out["source"] = self.facts_source()
+        out["meter"] = self.hosted_meter if out["source"] == "hosted" else None
         self._remember(key, out)
         return {**out, "cached": False}
 
@@ -966,13 +1002,16 @@ def routes(state: State):
         k = state.prefs.get("anthropic_key") or ""
         return web.json_response({"ok": True, "infoEnabled": bool(state.prefs.get("info_enabled")),
                                   "hasKey": bool(k), "keyHint": ("…" + k[-4:]) if k else "",
-                                  "updateCheck": bool(state.prefs.get("update_check", True)), "version": APP_VERSION})
+                                  "updateCheck": bool(state.prefs.get("update_check", True)), "version": APP_VERSION,
+                                  "factsSource": state.prefs.get("facts_source") or "hosted"})
 
     @r.post("/api/prefs")
     async def prefs_set(req):
         body = await req.json()
         if "infoEnabled" in body:
             state.prefs["info_enabled"] = bool(body["infoEnabled"])
+        if "factsSource" in body and body["factsSource"] in ("hosted", "own"):
+            state.prefs["facts_source"] = body["factsSource"]
         if "updateCheck" in body:
             state.prefs["update_check"] = bool(body["updateCheck"])
         if "anthropicKey" in body:

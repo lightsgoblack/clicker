@@ -34,6 +34,8 @@ Display name is "Colin's Cool Crazy Couch Computer Clicker" (short: C⁶ Clicker
 
 - **1.6.0:** `watch_loop` (10s) records history + `stats.json` independent of the page; `/api/stats`; `prefs.known` drives header TV tabs (only when 2+); `/api/do/cmd` and `/api/do/launch` GET twins for Shortcuts, party token accepted via `?party=` on `/api/*` or `X-Party-Token`; sounds are Web Audio in `snd()` keyed by theme, off by default (`clicker_sound`). TV tabs UI is unverified with two real devices (demo has one).
 
+- **`swift/` (2026-09-07): native Swift proof of the Companion protocol.** OPACK, TLV8, HAP pair-verify + pair-setup (SRP-6a/SHA-512/3072, X25519, Ed25519, HKDF, ChaCha20-Poly1305 via CryptoKit + attaswift/BigInt), framed session encryption, `_systemInfo`, `_sessionStart`, `_hidC`, `_launchApp`. VERIFIED against Great Room with the pyatv credentials: pair-verify in 38 ms, encrypted session, commands acknowledged. Pair-setup (PIN) is written but untested (needs Colin at the TV: `swift/.build/release/atvswift pair --host 192.168.68.88 --port 50157`). Companion port is per-device and changes across reboots; discover via mDNS `_companion-link._tcp`. Gotchas that cost time: top-level `Task {}` + semaphore deadlocks the main actor (use `Task.detached`); `Data` slices keep their indices, so never index a sliced buffer with literal offsets. Credentials are pyatv's 4-part hex, so both stacks share pairings.
+
 ## Verify
 - `.venv/bin/python server.py --demo --no-open` then drive the UI in a browser; `/api/demo/log` shows every command the fake device received.
 - Real-device behavior (does Netflix honor the link, does the TV respond to volume) cannot be verified headlessly. Say so.

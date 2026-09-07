@@ -73,6 +73,14 @@ Drag `Clicker` from Applications onto the Dock. Clicking it starts the server if
 
 This cannot live on Vercel or any web host: the server has to sit on the same Wi-Fi as the Apple TV, so each person runs it on their own Mac. Send them the Releases link (Apple Silicon) or the one-line install (any Mac) above. They need a Mac on the same Wi-Fi as their Apple TV, and the PIN the TV shows during the two pairing steps. That is the whole setup. Phones then work by opening the Mac's address in a browser while the Mac is awake.
 
+## Native protocol (Swift)
+
+`swift/` holds `atvswift`, a small native Swift implementation of the Apple TV Companion protocol (pairing, verification, session encryption, commands) with no Python and no pyatv. It shares pyatv's credential format, so a TV paired by Clicker works with it directly. It is the seed of a future native app; today it is a command-line tool:
+
+```bash
+cd swift && swift build -c release && .build/release/atvswift verify --host <tv ip> --port <companion port> --creds "<credentials>" --press play_pause
+```
+
 ## Developer install
 
 ```bash

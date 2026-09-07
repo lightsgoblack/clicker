@@ -32,7 +32,8 @@ from pyatv.const import InputAction, Protocol, PowerState, DeviceState
 from pyatv.interface import DeviceListener
 from pyatv.storage.file_storage import FileStorage
 
-HERE = Path(__file__).resolve().parent
+# Frozen by PyInstaller? Data files live next to the bundled interpreter.
+HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 DATA_DIR = Path.home() / "Library" / "Application Support" / "Clicker"
 PORT = int(os.environ.get("PORT", "8765"))
 

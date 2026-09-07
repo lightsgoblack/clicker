@@ -5,3 +5,6 @@ __pycache__/
 # Never commit pairing credentials (they live in ~/Library/Application Support/Clicker anyway)
 credentials.json
 prefs.json
+build/
+dist/
+*.spec

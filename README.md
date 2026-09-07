@@ -51,21 +51,27 @@ Dark (default), Light, two ink themes (Blackwork: bone on black; Flash Sheet: bl
 
 ## Install on any Mac (the easy way)
 
-Paste this one line into Terminal (press `Cmd+Space`, type Terminal, press Return) and hit Return:
+**Apple Silicon Mac (2020 or later):** download the latest `Clicker-mac-arm64.zip` from the [Releases page](https://github.com/lightsgoblack/clicker/releases/latest), double-click the zip, and drag `Clicker` into your Applications folder. Python is included; nothing else to install.
+
+The first time you open it, macOS will say it cannot verify the app (it is not signed with a paid Apple developer certificate). Click **Done**, then open **System Settings, Privacy & Security**, scroll down, and click **Open Anyway** next to Clicker. That is a one-time step. After that it opens like any app.
+
+**Intel Mac, or if you would rather not click through that warning:** paste this one line into Terminal (`Cmd+Space`, type Terminal, Return):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lightsgoblack/clicker/main/install.sh | bash
 ```
 
-That builds a `Clicker` app in your Applications folder, installs its one dependency inside it, and opens it. From then on, open Clicker from Launchpad or Spotlight like any app. It runs quietly in the background and opens the remote in your browser. Quit it from the gear menu in the remote.
+That assembles a `Clicker` app in your Applications folder on your own Mac (so there is no warning to click through), using the Python that macOS provides. If the Mac has never had Apple's Command Line Tools, a dialog offers to install them. Click Install and wait; the installer continues on its own.
 
-The only speed bump: if the Mac has never had Apple's Command Line Tools, a dialog offers to install them. Click Install, wait, and the installer continues on its own.
+Either way, Clicker then runs quietly in the background and opens the remote in your browser. Open it from Launchpad, Spotlight, or the Dock any time. Quit it from the gear menu in the remote.
 
-Because the app is assembled on your own Mac rather than downloaded as an app, there is no "unidentified developer" warning to fight.
+### Put it in the Dock
+
+Drag `Clicker` from Applications onto the Dock. Clicking it starts the server if needed and opens the remote. For a proper windowed app with no browser chrome, open the remote in Safari and choose **File, Add to Dock**; that creates a "Clicker" web app you can launch from the Dock too.
 
 ## Share it with friends
 
-This cannot live on Vercel or any web host: the server has to sit on the same Wi-Fi as the Apple TV, so each person runs it on their own Mac. Send them the one-line install above. They need a Mac on the same Wi-Fi as their Apple TV, and the PIN the TV shows during the two pairing steps. That is the whole setup. Phones then work by opening the Mac's address in a browser while the Mac is awake.
+This cannot live on Vercel or any web host: the server has to sit on the same Wi-Fi as the Apple TV, so each person runs it on their own Mac. Send them the Releases link (Apple Silicon) or the one-line install (any Mac) above. They need a Mac on the same Wi-Fi as their Apple TV, and the PIN the TV shows during the two pairing steps. That is the whole setup. Phones then work by opening the Mac's address in a browser while the Mac is awake.
 
 ## Developer install
 
@@ -73,7 +79,7 @@ This cannot live on Vercel or any web host: the server has to sit on the same Wi
 git clone https://github.com/lightsgoblack/clicker.git ~/Developer/clicker && ~/Developer/clicker/start.command
 ```
 
-`mac/` holds the app-bundle pieces (`Info.plist`, `launcher.sh`, `AppIcon.icns`, regenerated from `icon.svg` with `qlmanage` + `iconutil`). `install.sh` assembles them into `~/Applications/Clicker.app`; set `CLICKER_SRC=/path/to/checkout` to build from a local copy instead of downloading.
+`mac/` holds the app-bundle pieces (`Info.plist`, `launcher.sh`, `AppIcon.icns`, regenerated from `icon.svg` with `qlmanage` + `iconutil`). `install.sh` assembles them into `~/Applications/Clicker.app`; set `CLICKER_SRC=/path/to/checkout` to build from a local copy instead of downloading. `build-app.sh` makes the self-contained PyInstaller build and zip for Releases (arch of the building Mac).
 
 ## Keyboard
 

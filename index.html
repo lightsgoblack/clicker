@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-layout="classic">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0c0f">
+<title>Clicker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0c0f'/%3E%3Crect x='22' y='10' width='20' height='44' rx='6' fill='%23f0b35c'/%3E%3Ccircle cx='32' cy='24' r='5' fill='%230b0c0f'/%3E%3C/svg%3E">
+<script>
+  // Pre-paint: theme + layout so there is no flash.
+  // Values are stored JSON-encoded (see `store` below), so parse them here too.
+  try {
+    var rd = function (k, ok, d) { try { var v = JSON.parse(localStorage.getItem('clicker_' + k)); return ok.indexOf(v) >= 0 ? v : d; } catch (e) { return d; } };
+    document.documentElement.setAttribute('data-theme', rd('theme', ['dark', 'light'], 'dark'));
+    document.documentElement.setAttribute('data-layout', rd('layout', ['classic', 'grid'], 'classic'));
+  } catch (e) {}
+</script>
+<style>
+:root[data-theme="dark"]{
+  --bg:#0b0c0f; --surface:#15171c; --surface2:#1c1f26; --surface3:#252932;
+  --border:#262a33; --border2:#333846; --text:#e8e9ec; --muted:#8b909c; --faint:#5b606c;
+  --accent:#f0b35c; --accent2:#c98b32; --on-accent:#1a1206; --accent-soft:rgba(240,179,92,.14);
+  --danger:#e5484d; --ok:#3dd68c; --shadow:0 10px 30px rgba(0,0,0,.45);
+  --key:#1c1f26; --key-hi:#2a2e38; --key-ink:#e8e9ec;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f3f2ee; --surface:#ffffff; --surface2:#f0eee8; --surface3:#e6e3da;
+  --border:#dedbd2; --border2:#cbc7bc; --text:#1a1a1f; --muted:#666b76; --faint:#9a9ea8;
+  --accent:#b8741a; --accent2:#96590e; --on-accent:#ffffff; --accent-soft:rgba(184,116,26,.12);
+  --danger:#c62f34; --ok:#1f9d63; --shadow:0 10px 30px rgba(20,20,30,.12);
+  --key:#ffffff; --key-hi:#f2f0ea; --key-ink:#1a1a1f;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{min-height:100dvh;padding:max(12px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;margin:0;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+input,textarea,select{font:inherit;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;outline:none;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+[hidden]{display:none!important}
+a{color:var(--accent)}
+kbd{font:12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface3);border:1px solid var(--border2);border-bottom-width:2px;border-radius:6px;padding:3px 6px;color:var(--text)}
+.wrap{max-width:900px;margin:0 auto}
+
+/* Header */
+header{display:flex;align-items:center;gap:10px;padding:6px 0 16px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:18px}
+.brand .mark{flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}
+.spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:13px;max-width:52vw}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.chip.on .dot{background:var(--ok);box-shadow:0 0 0 3px rgba(61,214,140,.18)}
+.chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);flex:none}
+.icon-btn:hover{color:var(--text);background:var(--surface2)}
+.icon-btn svg{width:18px;height:18px}
+.icon-btn.active{color:var(--accent);border-color:var(--accent)}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px}
+.card h2{margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.card h2 .spacer{flex:1}
+.card h2 button{font-size:12px;color:var(--accent);font-weight:600;letter-spacing:0;text-transform:none}
+
+/* Remote */
+.remote{display:flex;flex-direction:column;gap:14px;align-items:center}
+.row{display:flex;gap:10px;justify-content:center;width:100%}
+.key{background:var(--key);border:1px solid var(--border);color:var(--key-ink);border-radius:16px;height:54px;flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;transition:background .08s,transform .06s;box-shadow:0 1px 0 rgba(0,0,0,.2)}
+.key svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.key:hover{background:var(--key-hi)}
+.key:active,.key.down{background:var(--accent);color:var(--on-accent);border-color:var(--accent);transform:scale(.97)}
+.key.danger:active,.key.danger.down{background:var(--danger);color:#fff;border-color:var(--danger)}
+.key.small{height:40px;font-size:12px;border-radius:12px;color:var(--muted)}
+.key.small:hover{color:var(--text)}
+.key .sub{font-size:10px;color:var(--muted);font-weight:500}
+.key:active .sub,.key.down .sub{color:inherit}
+
+/* D-pad (classic) */
+.dpad{position:relative;width:250px;height:250px;border-radius:50%;background:var(--key);border:1px solid var(--border);box-shadow:inset 0 2px 12px rgba(0,0,0,.25),0 1px 0 rgba(0,0,0,.2);flex:none}
+.dpad .arrow{position:absolute;width:72px;height:72px;display:flex;align-items:center;justify-content:center;color:var(--muted);border-radius:50%;transition:background .08s}
+.dpad .arrow svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.dpad .arrow:hover{color:var(--text)}
+.dpad .arrow:active,.dpad .arrow.down{background:var(--accent-soft);color:var(--accent)}
+.dpad .up{left:89px;top:6px}.dpad .down-a{left:89px;bottom:6px}.dpad .left{left:6px;top:89px}.dpad .right{right:6px;top:89px}
+.dpad .center{position:absolute;left:75px;top:75px;width:100px;height:100px;border-radius:50%;background:var(--surface);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.dpad .center:active,.dpad .center.down{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+
+/* Layout switch */
+:root[data-layout="grid"] .layout-classic{display:none}
+:root[data-layout="classic"] .layout-grid{display:none}
+.kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+.kgrid .key{height:60px;flex:none}
+
+/* Now playing */
+.np{display:flex;gap:12px;align-items:center;min-height:52px}
+.np .art{width:52px;height:52px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--faint);flex:none}
+.np .art svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.np .art.live{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.np .meta{min-width:0;flex:1}
+.np .title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np .sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:4px;background:var(--surface3);border-radius:2px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .6s linear}
+
+/* Favorites */
+.favs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.tile{position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:12px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:96px;transition:background .08s,transform .06s;width:100%}
+.tile:hover{background:var(--surface3)}
+.tile:active{transform:scale(.96);border-color:var(--accent)}
+.tile .ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-weight:700;letter-spacing:.02em}
+.tile .ico.initials{font-size:15px}
+.ico.brand{border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 3px 8px rgba(0,0,0,.28);position:relative;overflow:hidden}
+.ico.brand:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 55%);pointer-events:none}
+.ico.brand svg{width:66%;height:66%;position:relative}
+.tile .ico{width:56px;height:56px;border-radius:15px}
+.tile .ico.brand svg{width:64%;height:64%}
+.tile:hover .ico.brand{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 6px 14px rgba(0,0,0,.35)}
+.item .ico.brand svg{width:70%;height:70%}
+.iconpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:6px;margin-top:8px;max-height:132px;overflow:auto;padding:2px}
+.iconpick button{width:40px;height:40px;border-radius:11px;border:2px solid transparent;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.iconpick button.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.iconpick button svg{width:66%;height:66%;position:relative}
+.iconpick button:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 55%)}
+.tile .lbl{font-size:12px;font-weight:600;text-align:center;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tile .kind{position:absolute;top:8px;left:8px;font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.tile.add{border-style:dashed;color:var(--muted);background:transparent}
+.tile.add .ico{background:transparent;border-style:dashed;color:var(--muted);font-size:26px;font-weight:400}
+.tile .rm{position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:50%;background:var(--danger);color:#fff;display:none;align-items:center;justify-content:center;font-size:14px;font-weight:700;box-shadow:var(--shadow)}
+.tile .ed{position:absolute;top:-7px;left:-7px;width:24px;height:24px;border-radius:50%;background:var(--surface3);color:var(--text);border:1px solid var(--border2);display:none;align-items:center;justify-content:center;font-size:12px}
+.editing .tile:not(.add){animation:wiggle .35s ease-in-out infinite alternate;cursor:grab}
+.editing .tile .rm,.editing .tile .ed{display:flex}
+.editing .tile.dragover{border-color:var(--accent);background:var(--accent-soft)}
+@keyframes wiggle{from{transform:rotate(-1deg)}to{transform:rotate(1deg)}}
+@media (prefers-reduced-motion:reduce){.editing .tile:not(.add){animation:none}}
+.empty{color:var(--muted);font-size:13px;padding:10px 0}
+
+/* Type */
+.type{display:flex;gap:8px}
+.type input{flex:1}
+.btn{padding:10px 14px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-weight:600;font-size:14px;white-space:nowrap}
+.btn:hover{background:var(--surface3)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.primary:hover{background:var(--accent2)}
+.btn.danger{color:var(--danger)}
+.btn.sm{padding:7px 10px;font-size:13px;border-radius:9px}
+.hint{color:var(--muted);font-size:12.5px;margin-top:8px;line-height:1.5}
+
+/* Sheets */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0}
+@media (min-width:600px){.scrim{align-items:center;padding:20px}}
+.sheet{background:var(--surface);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));box-shadow:var(--shadow)}
+@media (min-width:600px){.sheet{border-radius:22px}}
+.sheet h3{margin:0 0 4px;font-size:18px}
+.sheet .top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sheet .top .spacer{flex:1}
+.sheet p{margin:6px 0 12px;color:var(--muted);font-size:14px}
+.dev{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--surface2);margin-bottom:10px}
+.dev .name{font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dev .name small{color:var(--muted);font-weight:400}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--surface3);color:var(--muted);border:1px solid var(--border)}
+.badge.ok{color:var(--ok);border-color:rgba(61,214,140,.35);background:rgba(61,214,140,.08)}
+.dev .acts{display:flex;gap:8px;flex-wrap:wrap}
+.pin{display:flex;gap:8px;align-items:center;margin-top:6px}
+.pin input{font-size:22px;letter-spacing:.3em;text-align:center;width:150px;font-variant-numeric:tabular-nums}
+.tabs{display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:12px;margin-bottom:12px}
+.tabs button{flex:1;padding:8px;border-radius:9px;font-weight:600;font-size:13px;color:var(--muted)}
+.tabs button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.list{display:flex;flex-direction:column;gap:6px;max-height:48dvh;overflow:auto}
+.item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);text-align:left;width:100%}
+.item:hover{background:var(--surface3)}
+.item .ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--surface);border:1px solid var(--border);flex:none;color:var(--text);font-weight:700}
+.item .ico.initials{font-size:12px}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .t small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.item .plus{color:var(--accent);font-weight:700;font-size:18px}
+.item.added .plus{color:var(--ok)}
+.form{display:flex;flex-direction:column;gap:10px}
+.form label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px}
+.form .two{display:grid;grid-template-columns:90px 1fr;gap:10px}
+.form .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.shortcuts{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px;align-items:center}
+.shortcuts kbd+kbd{margin-left:4px}
+.seg{display:flex;gap:6px}
+.seg button{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);font-weight:600;font-size:13px;color:var(--muted)}
+.seg button.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.setting{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--border)}
+.setting:first-of-type{border-top:0}
+.setting .t{flex:1}
+.setting .t b{display:block;font-size:14px}
+.setting .t small{color:var(--muted);font-size:12.5px}
+textarea.code{font:12px/1.4 ui-monospace,Menlo,monospace;min-height:120px;resize:vertical}
+
+/* Toast */
+#toasts{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:100;pointer-events:none;width:min(92vw,420px)}
+.toast{background:var(--surface3);color:var(--text);border:1px solid var(--border2);padding:10px 14px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);animation:pop .18s ease-out}
+.toast.err{border-color:var(--danger);color:var(--danger)}
+.toast.ok{border-color:rgba(61,214,140,.4)}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Offline banner */
+.banner{background:var(--accent-soft);border:1px solid var(--accent);color:var(--text);border-radius:14px;padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.banner .btn{margin-left:auto}
+footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><svg class="mark" viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="13" fill="var(--accent)"/><rect x="17" y="8" width="14" height="32" rx="5" fill="var(--bg)"/><circle cx="24" cy="17" r="3.6" fill="var(--accent)"/><rect x="20" y="25" width="8" height="2.4" rx="1.2" fill="var(--accent)"/><rect x="20" y="30" width="8" height="2.4" rx="1.2" fill="var(--accent)"/></svg>Clicker</div>
+    <div class="spacer"></div>
+    <button class="chip" id="devChip" title="Devices"><i class="dot"></i><span id="devName">Not connected</span></button>
+    <button class="icon-btn" id="editBtn" title="Edit favorites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+    <button class="icon-btn" id="themeBtn" title="Toggle light / dark"><svg id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg id="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+    <button class="icon-btn" id="settingsBtn" title="Settings and shortcuts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+  </header>
+
+  <div class="banner" id="banner" hidden>
+    <span id="bannerText">Not connected to an Apple TV.</span>
+    <button class="btn sm primary" id="bannerBtn">Choose device</button>
+  </div>
+
+  <div class="grid">
+    <!-- REMOTE -->
+    <section class="card">
+      <h2>Remote <span class="spacer"></span><button id="layoutBtn">Grid layout</button></h2>
+      <div class="remote" id="remote">
+        <!-- Classic -->
+        <div class="layout-classic remote" style="width:100%">
+          <div class="row">
+            <button class="key danger" data-cmd="power" title="Power (hold: sleep)"><svg viewBox="0 0 24 24"><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2v10"/></svg></button>
+            <button class="key" data-cmd="home" data-hold="home_hold" title="TV / Home (hold: Control Center)"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg></button>
+            <button class="key" data-cmd="menu" data-hold="top_menu" title="Back (hold: top menu)"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+          </div>
+          <div class="dpad">
+            <button class="arrow up" data-cmd="up" data-repeat="1" title="Up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+            <button class="arrow left" data-cmd="left" data-repeat="1" title="Left"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <button class="arrow right" data-cmd="right" data-repeat="1" title="Right"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+            <button class="arrow down-a" data-cmd="down" data-repeat="1" title="Down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <button class="center" data-cmd="select" data-holdaction="1" title="Select (hold for long press)">Select</button>
+          </div>
+          <div class="row">
+            <button class="key" data-cmd="skip_backward" title="Back 10 seconds"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+            <button class="key" data-cmd="play_pause" title="Play / Pause"><svg viewBox="0 0 24 24"><path d="M5 4l8 8-8 8z"/><path d="M16 4v16M20 4v16"/></svg></button>
+            <button class="key" data-cmd="skip_forward" title="Forward 10 seconds"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+          </div>
+          <div class="row">
+            <button class="key" data-cmd="volume_down" data-repeat="1" title="Volume down"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M23 9l-6 6M17 9l6 6"/></svg><span class="sub">Vol −</span></button>
+            <button class="key" data-cmd="volume_up" data-repeat="1" title="Volume up"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg><span class="sub">Vol +</span></button>
+          </div>
+          <div class="row">
+            <button class="key small" data-cmd="previous" title="Previous">⏮ Prev</button>
+            <button class="key small" data-cmd="next" title="Next">Next ⏭</button>
+            <button class="key small" data-cmd="control_center" title="Control Center">Control Center</button>
+          </div>
+        </div>
+        <!-- Grid -->
+        <div class="layout-grid kgrid">
+          <button class="key danger" data-cmd="power" title="Power"><svg viewBox="0 0 24 24"><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2v10"/></svg></button>
+          <button class="key" data-cmd="home" data-hold="home_hold" title="TV / Home"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg></button>
+          <button class="key" data-cmd="menu" data-hold="top_menu" title="Back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <button class="key" data-cmd="volume_down" data-repeat="1" title="Volume down"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M23 9l-6 6M17 9l6 6"/></svg></button>
+          <button class="key" data-cmd="up" data-repeat="1" title="Up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button class="key" data-cmd="volume_up" data-repeat="1" title="Volume up"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg></button>
+          <button class="key" data-cmd="left" data-repeat="1" title="Left"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="key" data-cmd="select" data-holdaction="1" title="Select"><svg viewBox="0 0 24 24"><path d="M9 10l-5 2 5 2"/><path d="M20 4v8a4 4 0 0 1-4 4H4"/></svg></button>
+          <button class="key" data-cmd="right" data-repeat="1" title="Right"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+          <button class="key" data-cmd="control_center" title="Control Center"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 9h10M7 15h6"/></svg></button>
+          <button class="key" data-cmd="down" data-repeat="1" title="Down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <button class="key" data-cmd="screensaver" title="Screensaver"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+          <button class="key" data-cmd="previous" title="Previous"><svg viewBox="0 0 24 24"><path d="M19 20L9 12l10-8z"/><path d="M5 19V5"/></svg></button>
+          <button class="key" data-cmd="play_pause" title="Play / Pause"><svg viewBox="0 0 24 24"><path d="M5 4l8 8-8 8z"/><path d="M16 4v16M20 4v16"/></svg></button>
+          <button class="key" data-cmd="next" title="Next"><svg viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/></svg></button>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <!-- NOW PLAYING -->
+      <section class="card">
+        <h2>Now playing</h2>
+        <div class="np">
+          <div class="art" id="npArt"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg></div>
+          <div class="meta">
+            <div class="title" id="npTitle">Nothing playing</div>
+            <div class="sub" id="npSub">Connect to an Apple TV to see what is on.</div>
+            <div class="bar" id="npBar" hidden><i id="npFill"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAVORITES -->
+      <section class="card" id="favCard">
+        <h2>Favorites <span class="spacer"></span><button id="favEditToggle">Edit</button></h2>
+        <div class="favs" id="favs"></div>
+        <div class="hint">Tap a tile to launch it on the TV. Add apps, deep links to specific shows, text to type, or single remote commands.</div>
+      </section>
+
+      <!-- TYPE -->
+      <section class="card">
+        <h2>Type on TV</h2>
+        <form class="type" id="typeForm">
+          <input id="typeInput" placeholder="Search text, password, anything with a text field focused on the TV" autocomplete="off" autocapitalize="off">
+          <button class="btn primary" type="submit">Send</button>
+          <button class="btn" type="button" id="typeClear" title="Clear the field on the TV">Clear</button>
+        </form>
+        <div class="hint">Works when a text field is focused on the Apple TV (search boxes, sign-in screens). Needs the "apps" pairing.</div>
+      </section>
+    </div>
+  </div>
+  <footer>Clicker runs on this Mac and talks to the Apple TV over your Wi-Fi. Nothing leaves your network. Press <kbd>?</kbd> for keyboard shortcuts.</footer>
+</div>
+
+<div id="sheetRoot"></div>
+<div id="toasts"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const html = document.documentElement;
+
+// ---------- storage ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('clicker_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('clicker_' + k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- api ----------
+async function api(path, body) {
+  const opts = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  let res;
+  try { res = await fetch('/api/' + path, opts); }
+  catch { throw new Error('Cannot reach the Clicker server. Is it still running?'); }
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+// ---------- toast ----------
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind; el.textContent = msg;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 320); }, kind === 'err' ? 3800 : 1800);
+}
+
+// ---------- theme / layout ----------
+function setTheme(t) { html.setAttribute('data-theme', t); store.set('theme', t); $('#sun').hidden = t !== 'dark'; $('#moon').hidden = t === 'dark'; $('meta[name=theme-color]').content = t === 'dark' ? '#0b0c0f' : '#f3f2ee'; }
+setTheme(html.getAttribute('data-theme'));
+$('#themeBtn').onclick = () => setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+function setLayout(l) { html.setAttribute('data-layout', l); store.set('layout', l); $('#layoutBtn').textContent = l === 'classic' ? 'Grid layout' : 'Classic layout'; }
+setLayout(html.getAttribute('data-layout'));
+$('#layoutBtn').onclick = () => setLayout(html.getAttribute('data-layout') === 'classic' ? 'grid' : 'classic');
+
+// ---------- state ----------
+const S = { connected: false, status: null, power: null, editing: false, sheet: null };
+
+// ---------- commands ----------
+let busy = false;
+async function cmd(name, action = 'tap') {
+  if (name === 'power') return power();
+  try { await api('cmd', { name, action }); }
+  catch (e) { toast(e.message, 'err'); }
+}
+async function power() {
+  const on = S.status && S.status.power === 'on';
+  try { await api('power', { on: !on }); toast(on ? 'Sleeping' : 'Waking up'); setTimeout(refresh, 800); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
+// Press handling: tap, hold-to-repeat (arrows/volume), hold-for-alt (home/menu/select).
+function wireKeys(root) {
+  $$('[data-cmd]', root).forEach(btn => {
+    const name = btn.dataset.cmd, hold = btn.dataset.hold, repeat = btn.dataset.repeat, holdAction = btn.dataset.holdaction;
+    let timer = null, interval = null, fired = false, active = false;
+    const start = (e) => {
+      if (e.button != null && e.button !== 0) return;
+      e.preventDefault(); active = true; fired = false; btn.classList.add('down');
+      try { btn.setPointerCapture(e.pointerId); } catch {}
+      if (repeat) {
+        cmd(name); fired = true;
+        timer = setTimeout(() => { interval = setInterval(() => cmd(name), 140); }, 380);
+      } else if (hold || holdAction) {
+        timer = setTimeout(() => { fired = true; if (hold) cmd(hold); else cmd(name, 'hold'); btn.classList.add('held'); }, 550);
+      }
+    };
+    const end = (e) => {
+      if (!active) return; active = false; btn.classList.remove('down', 'held'); btn.blur();
+      clearTimeout(timer); clearInterval(interval); timer = interval = null;
+      if (!fired) cmd(name);
+    };
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', end);
+    btn.addEventListener('pointercancel', end);
+    btn.addEventListener('lostpointercapture', end);
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+  });
+}
+wireKeys(document);
+
+// Keyboard shortcuts
+const KEYS = {
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  Enter: 'select', Backspace: 'menu', Escape: 'menu', ' ': 'play_pause',
+  h: 'home', H: 'home', '[': 'skip_backward', ']': 'skip_forward', ',': 'previous', '.': 'next',
+  '-': 'volume_down', '_': 'volume_down', '=': 'volume_up', '+': 'volume_up', c: 'control_center', C: 'control_center', p: 'power', P: 'power',
+};
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (S.sheet) { if (e.key === 'Escape') closeSheet(); return; }
+  if (e.key === '?') { e.preventDefault(); openSettings(); return; }
+  if (e.key === 't' || e.key === 'T') { e.preventDefault(); $('#typeInput').focus(); return; }
+  const name = KEYS[e.key];
+  if (!name) return;
+  e.preventDefault();
+  if (e.repeat && !['up', 'down', 'left', 'right', 'volume_up', 'volume_down'].includes(name)) return;
+  cmd(name);
+  const b = $(`[data-cmd="${name}"]`); if (b) { b.classList.add('down'); setTimeout(() => b.classList.remove('down'), 120); }
+});
+
+// ---------- status polling ----------
+let pollTimer = null;
+function fmt(s) { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); }
+function renderStatus(st) {
+  S.status = st; S.connected = !!st.connected;
+  const chip = $('#devChip'); chip.classList.toggle('on', S.connected);
+  $('#devName').textContent = S.connected ? st.device.name : 'Not connected';
+  $('#banner').hidden = S.connected;
+  const p = st.playing;
+  const art = $('#npArt');
+  if (S.connected && p && p.title) {
+    $('#npTitle').textContent = p.title;
+    const bits = [];
+    if (p.series && p.series !== p.title) bits.push(p.series);
+    if (p.season != null && p.episode != null) bits.push('S' + p.season + ' E' + p.episode);
+    if (p.artist) bits.push(p.artist);
+    if (st.app && st.app.name) bits.push(st.app.name);
+    bits.push(p.state === 'playing' ? 'Playing' : p.state === 'paused' ? 'Paused' : p.state);
+    $('#npSub').textContent = bits.join(' · ');
+    if (p.total) { $('#npBar').hidden = false; $('#npFill').style.width = Math.min(100, (p.position || 0) / p.total * 100) + '%'; $('#npSub').textContent += ' · ' + fmt(p.position) + ' / ' + fmt(p.total); }
+    else $('#npBar').hidden = true;
+    art.classList.toggle('live', p.state === 'playing');
+  } else if (S.connected) {
+    $('#npTitle').textContent = st.app && st.app.name ? st.app.name : (st.power === 'off' ? 'Asleep' : 'Idle');
+    $('#npSub').textContent = st.power === 'off' ? 'Press power to wake it up.' : (p && p.state ? p.state[0].toUpperCase() + p.state.slice(1) : 'Nothing playing right now.');
+    $('#npBar').hidden = true; art.classList.remove('live');
+  } else {
+    $('#npTitle').textContent = 'Nothing playing'; $('#npSub').textContent = 'Connect to an Apple TV to see what is on.'; $('#npBar').hidden = true; art.classList.remove('live');
+  }
+}
+async function refresh() {
+  try { renderStatus(await api('status')); }
+  catch (e) { renderStatus({ connected: false }); $('#bannerText').textContent = e.message; }
+}
+function startPolling() { clearInterval(pollTimer); pollTimer = setInterval(() => { if (!document.hidden) refresh(); }, 3000); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+
+// ---------- favorites ----------
+// ---------- icons ----------
+// Hand-drawn glyphs on brand-colored gradients. No network, no trademarked artwork, just shapes.
+const G = (a, b) => `linear-gradient(160deg, ${a} 0%, ${b} 100%)`;
+const SV = (inner, extra = '') => `<svg viewBox="0 0 48 48" ${extra}>${inner}</svg>`;
+const TXT = (t, size = 16, weight = 800, fill = '#fff', extra = '') => `<text x="24" y="24" text-anchor="middle" dominant-baseline="central" font-family="-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="${fill}" ${extra}>${t}</text>`;
+const ICONS = {
+  appletv:  { bg: G('#3a3a3c', '#0a0a0a'), svg: SV(`<g transform="translate(4 4) scale(1.35)"><path d="M18.6 13.2c.7-.9 1.2-2.1 1-3.2-1 .1-2.2.7-2.9 1.6-.6.7-1.2 1.9-1 3 1.1.1 2.2-.5 2.9-1.4z" fill="#fff"/><path d="M21.7 17.4c-1.6 0-3 .9-3.8.9s-2-.9-3.4-.9c-1.8 0-3.4 1-4.3 2.6-1.9 3.2-.5 8 1.3 10.6.9 1.3 1.9 2.7 3.3 2.7 1.3-.1 1.8-.9 3.4-.9s2 .9 3.4.8c1.4 0 2.3-1.3 3.2-2.6.7-1 1-1.5 1.5-2.6-3.9-1.5-4.5-7-.7-9.1-1-1.2-2.5-1.5-3.9-1.5z" fill="#fff"/></g>` + TXT('tv', 17, 700, '#fff', 'x="35" y="30"')) },
+  netflix:  { bg: G('#e50914', '#8f0610'), svg: SV(`<path d="M15 8h6.5l6 18V8H34v32c-2.3-.5-4.4-.7-6.5-.8L21.5 22v17.4c-2.2.2-4.3.4-6.5.7z" fill="#fff"/>`) },
+  youtube:  { bg: G('#ff2a2a', '#c40000'), svg: SV(`<rect x="7" y="13" width="34" height="22" rx="7" fill="#fff"/><path d="M20.5 18.5v11l9-5.5z" fill="#e00"/>`) },
+  youtubetv:{ bg: G('#ff2a2a', '#c40000'), svg: SV(`<rect x="7" y="9" width="34" height="20" rx="6" fill="#fff"/><path d="M21 13.5v11l8.5-5.5z" fill="#e00"/>` + TXT('TV', 11, 800, '#fff', 'y="37"')) },
+  disney:   { bg: G('#1f4be0', '#081a6b'), svg: SV(`<path d="M7 17c7-9 27-9 34 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>` + TXT('D+', 21, 800, '#fff', 'y="29"')) },
+  hulu:     { bg: G('#1ce783', '#0d9e57'), svg: SV(TXT('hulu', 17, 800, '#0b1f14')) },
+  max:      { bg: G('#0f3cff', '#071c8a'), svg: SV(TXT('max', 18, 800)) },
+  prime:    { bg: G('#1fb6f0', '#0a6fa8'), svg: SV(TXT('prime', 14, 800, '#fff', 'y="21"') + `<path d="M12 31c7 5 17 5 24 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M33 28l3 3-4 1" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`) },
+  peacock:  { bg: G('#1c1c1e', '#000'), svg: SV(['#ffd400', '#ff7a00', '#ff2d55', '#af52de', '#0a84ff', '#00c7be'].map((c, i) => `<ellipse cx="24" cy="24" rx="4.2" ry="15" fill="${c}" transform="rotate(${(i - 2.5) * 26} 24 36)"/>`).join('') + `<circle cx="24" cy="36" r="5" fill="#fff"/>`) },
+  paramount:{ bg: G('#1c76ff', '#0038a8'), svg: SV(`<path d="M8 36l10-19 6 10 3-5 13 14z" fill="#fff"/><circle cx="14" cy="11" r="1.6" fill="#fff"/><circle cx="24" cy="8" r="1.4" fill="#fff"/><circle cx="34" cy="11" r="1.6" fill="#fff"/><circle cx="39" cy="19" r="1.3" fill="#fff"/><circle cx="9" cy="19" r="1.3" fill="#fff"/>`) },
+  applemusic:{ bg: G('#fc5c7d', '#e0233f'), svg: SV(`<path d="M19 33V15l14-3v18" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="33" r="4" fill="#fff"/><circle cx="29" cy="30" r="4" fill="#fff"/>`) },
+  spotify:  { bg: G('#1ed760', '#128a3e'), svg: SV(`<circle cx="24" cy="24" r="16" fill="#0b1a10"/><path d="M14 19c7-2 14-1.5 20 1.5M15.5 24.5c6-1.7 11.5-1.2 16.5 1.3M17 29.5c5-1.4 9.5-1 13.5 1" stroke="#1ed760" stroke-width="2.6" fill="none" stroke-linecap="round"/>`) },
+  plex:     { bg: G('#f5b21c', '#c77f06'), svg: SV(`<path d="M15 9h9l10 15-10 15h-9l10-15z" fill="#1a1a1a"/>`) },
+  twitch:   { bg: G('#a970ff', '#6c2bd9'), svg: SV(`<path d="M12 9h26v18l-8 8h-7l-5 5v-5h-6z" fill="#fff"/><path d="M15 12v18h6v4l4-4h6l4-4V12z" fill="#7b3fe4"/><rect x="23" y="16" width="3" height="8" fill="#fff"/><rect x="30" y="16" width="3" height="8" fill="#fff"/>`) },
+  espn:     { bg: G('#e4002b', '#9e001d'), svg: SV(TXT('ESPN', 13, 900, '#fff', 'font-style="italic"')) },
+  crunchyroll:{ bg: G('#ff8a3d', '#d9540c'), svg: SV(`<circle cx="24" cy="24" r="14" fill="none" stroke="#fff" stroke-width="3"/><circle cx="29" cy="20" r="6" fill="#fff"/>`) },
+  settings: { bg: G('#9a9aa0', '#5a5a60'), svg: SV(`<circle cx="24" cy="24" r="5" fill="none" stroke="#fff" stroke-width="3"/><path d="M24 8v5M24 35v5M8 24h5M35 24h5M12.7 12.7l3.5 3.5M31.8 31.8l3.5 3.5M12.7 35.3l3.5-3.5M31.8 16.2l3.5-3.5" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>`) },
+  appstore: { bg: G('#2ea1ff', '#0a5be0'), svg: SV(`<path d="M17 33l14-24M31 33L17 9M11 27h26M13 33h4M31 33h4" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`) },
+  photos:   { bg: G('#ffffff', '#ececec'), svg: SV(['#ff9f0a', '#ffd60a', '#30d158', '#64d2ff', '#0a84ff', '#bf5af2', '#ff375f', '#ff6b3d'].map((c, i) => `<ellipse cx="24" cy="15" rx="5" ry="9" fill="${c}" opacity=".85" transform="rotate(${i * 45} 24 24)"/>`).join('')) },
+  podcasts: { bg: G('#c26bff', '#7a2fc4'), svg: SV(`<rect x="19" y="10" width="10" height="16" rx="5" fill="#fff"/><path d="M14 22a10 10 0 0 0 20 0M24 32v6M18 38h12" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>`) },
+  fitness:  { bg: G('#2c2c2e', '#0a0a0a'), svg: SV(`<circle cx="24" cy="24" r="16" fill="none" stroke="#ff375f" stroke-width="4" stroke-dasharray="80 100" stroke-linecap="round" transform="rotate(-90 24 24)"/><circle cx="24" cy="24" r="11" fill="none" stroke="#30d158" stroke-width="4" stroke-dasharray="50 100" stroke-linecap="round" transform="rotate(-90 24 24)"/><circle cx="24" cy="24" r="6" fill="none" stroke="#64d2ff" stroke-width="4" stroke-dasharray="28 100" stroke-linecap="round" transform="rotate(-90 24 24)"/>`) },
+  arcade:   { bg: G('#ff5e7a', '#d1213e'), svg: SV(`<rect x="10" y="26" width="28" height="12" rx="4" fill="#fff"/><rect x="21" y="14" width="6" height="14" fill="#fff"/><circle cx="24" cy="12" r="6" fill="#fff"/><circle cx="31" cy="32" r="2.2" fill="#d1213e"/><circle cx="17" cy="32" r="2.2" fill="#d1213e"/>`) },
+  search:   { bg: G('#5b5b60', '#2c2c2e'), svg: SV(`<circle cx="21" cy="21" r="10" fill="none" stroke="#fff" stroke-width="3.5"/><path d="M29 29l9 9" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`) },
+  tv:       { bg: G('#4a4a4f', '#1c1c1e'), svg: SV(`<rect x="8" y="12" width="32" height="21" rx="4" fill="none" stroke="#fff" stroke-width="3"/><path d="M17 39h14" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`) },
+  screensaver:{ bg: G('#3d55c4', '#101a4d'), svg: SV(`<path d="M31 12a12 12 0 1 0 5 20 10 10 0 0 1-5-20z" fill="#fff"/><circle cx="14" cy="14" r="1.6" fill="#fff"/><circle cx="36" cy="10" r="1.2" fill="#fff"/><circle cx="11" cy="30" r="1.2" fill="#fff"/>`) },
+  controlcenter:{ bg: G('#7d7d84', '#48484a'), svg: SV(`<path d="M12 16h24M12 24h24M12 32h24" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="30" cy="16" r="3.5" fill="#48484a" stroke="#fff" stroke-width="2.5"/><circle cx="18" cy="24" r="3.5" fill="#48484a" stroke="#fff" stroke-width="2.5"/><circle cx="26" cy="32" r="3.5" fill="#48484a" stroke="#fff" stroke-width="2.5"/>`) },
+  sleep:    { bg: G('#3b3b6b', '#161632'), svg: SV(`<path d="M27 10a13 13 0 1 0 8 23 11 11 0 0 1-8-23z" fill="#fff"/>` + TXT('z', 12, 800, '#fff', 'x="36" y="14"')) },
+  wake:     { bg: G('#ffb300', '#f26b00'), svg: SV(`<circle cx="24" cy="24" r="7" fill="#fff"/><path d="M24 8v5M24 35v5M8 24h5M35 24h5M12.7 12.7l3.5 3.5M31.8 31.8l3.5 3.5M12.7 35.3l3.5-3.5M31.8 16.2l3.5-3.5" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`) },
+  topmenu:  { bg: G('#6e6e73', '#3a3a3c'), svg: SV(`<path d="M13 30l11-11 11 11M13 21l11-11 11 11" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`) },
+  link:     { bg: G('#7d7aff', '#3634a3'), svg: SV(`<path d="M20 28l8-8M26 14l3-3a6 6 0 0 1 8 8l-3 3M22 34l-3 3a6 6 0 0 1-8-8l3-3" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="round"/>`) },
+  text:     { bg: G('#34d367', '#1a8f47'), svg: SV(TXT('Aa', 18, 800)) },
+  button:   { bg: G('#ffb340', '#e07a00'), svg: SV(`<circle cx="24" cy="24" r="11" fill="none" stroke="#fff" stroke-width="3.2"/><circle cx="24" cy="24" r="4.5" fill="#fff"/>`) },
+  macro:    { bg: G('#d17dff', '#8b2fd0'), svg: SV(`<path d="M27 8L14 27h9l-2 13 13-19h-9z" fill="#fff"/>`) },
+  film:     { bg: G('#ff7a59', '#d6391f'), svg: SV(`<rect x="9" y="12" width="30" height="24" rx="3" fill="none" stroke="#fff" stroke-width="3"/><path d="M9 19h30M9 29h30M16 12v24M32 12v24" stroke="#fff" stroke-width="2.4"/>`) },
+  star:     { bg: G('#ffd60a', '#e0a000'), svg: SV(`<path d="M24 8l4.8 10.2 11.2 1.4-8.2 7.7 2.1 11.1L24 33l-9.9 5.4 2.1-11.1-8.2-7.7 11.2-1.4z" fill="#fff"/>`) },
+  game:     { bg: G('#5e5ce6', '#2f2d9c'), svg: SV(`<rect x="7" y="16" width="34" height="18" rx="9" fill="#fff"/><path d="M16 21v8M12 25h8" stroke="#2f2d9c" stroke-width="2.6" stroke-linecap="round"/><circle cx="31" cy="23" r="2" fill="#2f2d9c"/><circle cx="35" cy="27" r="2" fill="#2f2d9c"/>`) },
+  news:     { bg: G('#ff5c5c', '#c41e1e'), svg: SV(`<rect x="9" y="11" width="30" height="26" rx="3" fill="#fff"/><rect x="13" y="15" width="10" height="8" fill="#c41e1e"/><path d="M26 16h9M26 20h9M13 27h22M13 31h22" stroke="#c41e1e" stroke-width="2"/>`) },
+  sports:   { bg: G('#30d158', '#178a3a'), svg: SV(`<circle cx="24" cy="24" r="14" fill="#fff"/><path d="M24 10v28M10 24h28M14 14c6 6 14 6 20 0M14 34c6-6 14-6 20 0" stroke="#178a3a" stroke-width="2" fill="none"/>`) },
+  kids:     { bg: G('#ffcc00', '#ff8c00'), svg: SV(`<circle cx="24" cy="24" r="14" fill="#fff"/><circle cx="19" cy="21" r="2" fill="#ff8c00"/><circle cx="29" cy="21" r="2" fill="#ff8c00"/><path d="M17 28c3 4 11 4 14 0" stroke="#ff8c00" stroke-width="2.4" fill="none" stroke-linecap="round"/>`) },
+  home:     { bg: G('#ff9f0a', '#d96a00'), svg: SV(`<path d="M9 23L24 10l15 13M13 21v16h8v-9h6v9h8V21" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`) },
+};
+const ICON_KEYS = Object.keys(ICONS);
+const CATALOG = [
+  { label: 'Apple TV', icon: 'appletv', kind: 'app', value: 'com.apple.TVWatchList' },
+  { label: 'Netflix', icon: 'netflix', kind: 'app', value: 'com.netflix.Netflix' },
+  { label: 'YouTube', icon: 'youtube', kind: 'app', value: 'com.google.ios.youtube' },
+  { label: 'YouTube TV', icon: 'youtubetv', kind: 'app', value: 'com.google.ios.youtubeunplugged' },
+  { label: 'Disney+', icon: 'disney', kind: 'app', value: 'com.disney.disneyplus' },
+  { label: 'Hulu', icon: 'hulu', kind: 'app', value: 'com.hulu.plus' },
+  { label: 'Max', icon: 'max', kind: 'app', value: 'com.wbd.stream' },
+  { label: 'Prime Video', icon: 'prime', kind: 'app', value: 'com.amazon.aiv.AIVApp' },
+  { label: 'Peacock', icon: 'peacock', kind: 'app', value: 'com.peacocktv.peacock' },
+  { label: 'Paramount+', icon: 'paramount', kind: 'app', value: 'com.cbsvideo.app' },
+  { label: 'Apple Music', icon: 'applemusic', kind: 'app', value: 'com.apple.TVMusic' },
+  { label: 'Spotify', icon: 'spotify', kind: 'app', value: 'com.spotify.client' },
+  { label: 'Plex', icon: 'plex', kind: 'app', value: 'com.plexapp.plex' },
+  { label: 'Twitch', icon: 'twitch', kind: 'app', value: 'tv.twitch' },
+  { label: 'ESPN', icon: 'espn', kind: 'app', value: 'com.espn.ScoreCenter' },
+  { label: 'Crunchyroll', icon: 'crunchyroll', kind: 'app', value: 'com.crunchyroll.iphone' },
+  { label: 'Settings', icon: 'settings', kind: 'app', value: 'com.apple.TVSettings' },
+  { label: 'App Store', icon: 'appstore', kind: 'app', value: 'com.apple.TVAppStore' },
+  { label: 'Photos', icon: 'photos', kind: 'app', value: 'com.apple.TVPhotos' },
+  { label: 'Podcasts', icon: 'podcasts', kind: 'app', value: 'com.apple.podcasts' },
+  { label: 'Fitness', icon: 'fitness', kind: 'app', value: 'com.apple.Fitness' },
+  { label: 'Arcade', icon: 'arcade', kind: 'app', value: 'com.apple.Arcade' },
+  { label: 'Search', icon: 'search', kind: 'app', value: 'com.apple.TVSearch' },
+  { label: 'Screensaver', icon: 'screensaver', kind: 'cmd', value: 'screensaver' },
+  { label: 'Control Center', icon: 'controlcenter', kind: 'cmd', value: 'control_center' },
+  { label: 'Sleep', icon: 'sleep', kind: 'cmd', value: 'suspend' },
+  { label: 'Wake', icon: 'wake', kind: 'cmd', value: 'wakeup' },
+  { label: 'Top menu', icon: 'topmenu', kind: 'cmd', value: 'top_menu' },
+];
+const KIND_LABEL = { app: 'app', link: 'link', text: 'text', cmd: 'button', seq: 'macro' };
+const DEFAULT_FAVS = ['Apple TV', 'Netflix', 'YouTube', 'Settings', 'Screensaver'].map(l => Object.assign({ id: uid() }, CATALOG.find(c => c.label === l)));
+function uid() { return Math.random().toString(36).slice(2, 9); }
+let favs = store.get('favs', null);
+if (!Array.isArray(favs)) { favs = DEFAULT_FAVS; store.set('favs', favs); }
+function saveFavs() { store.set('favs', favs); renderFavs(); }
+
+function iconEl(f, cls = 'ico') {
+  const el = document.createElement('div'); el.className = cls;
+  let key = f.icon && ICONS[f.icon] ? f.icon : null;
+  if (!key) { const c = CATALOG.find(c => c.value === f.value && c.kind === f.kind); if (c && ICONS[c.icon]) key = c.icon; }
+  if (!key && !(f.icon || '').trim() && ICONS[f.kind]) key = f.kind;
+  if (key) { el.classList.add('brand'); el.style.background = ICONS[key].bg; el.innerHTML = ICONS[key].svg; return el; }
+  const ic = (f.icon || '').trim();
+  const isEmoji = ic && /\p{Emoji_Presentation}|\uFE0F/u.test(ic);
+  if (isEmoji) { el.textContent = ic; }
+  else { el.classList.add('initials'); el.textContent = (ic || initials(f.label)).slice(0, 5); const c = f.color || hashColor(f.label || '?'); el.style.background = c; el.style.borderColor = 'transparent'; el.style.color = contrast(c); }
+  return el;
+}
+function initials(s) { return (s || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
+function hashColor(s) { let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 42%)`; }
+function contrast(c) { const m = /^#([0-9a-f]{3,6})$/i.exec(c); if (!m) return '#fff'; let hex = m[1]; if (hex.length === 3) hex = hex.split('').map(x => x + x).join(''); const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16); return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#111' : '#fff'; }
+
+function renderFavs() {
+  const root = $('#favs'); root.innerHTML = '';
+  favs.forEach((f, i) => {
+    const t = document.createElement('button'); t.className = 'tile'; t.dataset.i = i; t.title = f.value || '';
+    t.appendChild(iconEl(f));
+    const l = document.createElement('div'); l.className = 'lbl'; l.textContent = f.label; t.appendChild(l);
+    const k = document.createElement('span'); k.className = 'kind'; k.textContent = KIND_LABEL[f.kind] || f.kind; t.appendChild(k);
+    const rm = document.createElement('span'); rm.className = 'rm'; rm.textContent = '×'; rm.title = 'Remove'; t.appendChild(rm);
+    const ed = document.createElement('span'); ed.className = 'ed'; ed.textContent = '✎'; ed.title = 'Edit'; t.appendChild(ed);
+    t.onclick = (e) => {
+      t.blur();
+      if (S.editing) {
+        if (e.target === rm) { favs.splice(i, 1); saveFavs(); }
+        else openFavForm(f, i);
+        return;
+      }
+      runFav(f);
+    };
+    // drag reorder
+    t.draggable = true;
+    t.addEventListener('dragstart', e => { if (!S.editing) { e.preventDefault(); return; } e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; });
+    t.addEventListener('dragover', e => { if (!S.editing) return; e.preventDefault(); t.classList.add('dragover'); });
+    t.addEventListener('dragleave', () => t.classList.remove('dragover'));
+    t.addEventListener('drop', e => { e.preventDefault(); t.classList.remove('dragover'); const from = +e.dataTransfer.getData('text/plain'); if (isNaN(from) || from === i) return; const [m] = favs.splice(from, 1); favs.splice(i, 0, m); saveFavs(); });
+    root.appendChild(t);
+  });
+  const add = document.createElement('button'); add.className = 'tile add'; add.innerHTML = '<div class="ico">+</div><div class="lbl">Add</div>';
+  add.onclick = openAddSheet; root.appendChild(add);
+  $('#favCard').classList.toggle('editing', S.editing);
+  $('#favEditToggle').textContent = S.editing ? 'Done' : 'Edit';
+  $('#editBtn').classList.toggle('active', S.editing);
+}
+function setEditing(v) { S.editing = v; renderFavs(); }
+$('#favEditToggle').onclick = () => setEditing(!S.editing);
+$('#editBtn').onclick = () => setEditing(!S.editing);
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function runFav(f) {
+  try {
+    if (f.kind === 'app' || f.kind === 'link') { await api('launch', { target: f.value }); toast('Opening ' + f.label); }
+    else if (f.kind === 'text') { await api('text', { text: f.value }); toast('Typed'); }
+    else if (f.kind === 'cmd') { await api('cmd', { name: f.value }); }
+    else if (f.kind === 'seq') { await runSeq(f.value); toast(f.label + ' done'); }
+  } catch (e) { toast(e.message, 'err'); }
+}
+// Macro steps, one per line or ";"-separated: "home", "wait 800", "launch com.netflix.Netflix", "type hello", "up x3"
+async function runSeq(src) {
+  const steps = String(src).split(/[\n;]+/).map(s => s.trim()).filter(Boolean);
+  for (const step of steps) {
+    const [verb, ...rest] = step.split(/\s+/); const arg = rest.join(' ');
+    if (verb === 'wait') { await wait(parseInt(arg || '500', 10)); continue; }
+    if (verb === 'launch' || verb === 'open') { await api('launch', { target: arg }); continue; }
+    if (verb === 'type') { await api('text', { text: arg }); continue; }
+    const m = /^(\w+)(?:\s+x(\d+))?$/.exec(step);
+    if (!m) throw new Error('Unknown macro step: ' + step);
+    const n = parseInt(m[2] || '1', 10);
+    for (let i = 0; i < n; i++) { await api('cmd', { name: m[1] }); if (n > 1) await wait(120); }
+  }
+}
+
+// ---------- sheets ----------
+function openSheet(node) {
+  closeSheet();
+  const scrim = document.createElement('div'); scrim.className = 'scrim';
+  const sheet = document.createElement('div'); sheet.className = 'sheet'; sheet.appendChild(node);
+  scrim.appendChild(sheet); scrim.addEventListener('click', e => { if (e.target === scrim) closeSheet(); });
+  $('#sheetRoot').appendChild(scrim); S.sheet = scrim;
+  return sheet;
+}
+function closeSheet() { if (S.sheet) { S.sheet.remove(); S.sheet = null; } }
+function sheetTop(title, sub) {
+  const d = document.createElement('div');
+  d.innerHTML = `<div class="top"><h3></h3><span class="spacer"></span><button class="btn sm" data-close>Close</button></div>${sub ? '<p></p>' : ''}`;
+  d.querySelector('h3').textContent = title; if (sub) d.querySelector('p').textContent = sub;
+  d.querySelector('[data-close]').onclick = closeSheet;
+  return d;
+}
+
+// Devices sheet
+async function openDevices() {
+  const node = sheetTop('Apple TVs on your network', 'Pair once with the PIN shown on the TV. "Remote" pairing drives navigation and playback. "Apps" pairing adds app launching, typing, and power.');
+  const listEl = document.createElement('div'); listEl.className = 'list'; listEl.style.maxHeight = 'none';
+  const scanBtn = document.createElement('button'); scanBtn.className = 'btn sm'; scanBtn.textContent = 'Scan again';
+  scanBtn.style.marginBottom = '10px'; node.appendChild(scanBtn); node.appendChild(listEl);
+  openSheet(node);
+  async function scan() {
+    listEl.innerHTML = '<div class="empty">Scanning (about 5 seconds)…</div>'; scanBtn.disabled = true;
+    try {
+      const { devices } = await api('scan');
+      listEl.innerHTML = '';
+      if (!devices.length) listEl.innerHTML = '<div class="empty">No Apple TV found. Make sure it is awake and on the same Wi-Fi as this Mac, then scan again.</div>';
+      devices.forEach(d => listEl.appendChild(deviceRow(d)));
+    } catch (e) { listEl.innerHTML = `<div class="empty">${e.message}</div>`; }
+    scanBtn.disabled = false;
+  }
+  scanBtn.onclick = scan; scan();
+}
+function deviceRow(d) {
+  const row = document.createElement('div'); row.className = 'dev';
+  const airplay = d.services.find(s => s.protocol === 'airplay'), companion = d.services.find(s => s.protocol === 'companion');
+  const isCur = S.connected && S.status.device && S.status.device.identifier === d.identifier;
+  row.innerHTML = `<div class="name"><span></span><small></small>${isCur ? '<span class="badge ok">Connected</span>' : ''}</div><div class="badges"></div><div class="acts"></div><div class="pinbox"></div>`;
+  row.querySelector('.name span').textContent = d.name; row.querySelector('.name small').textContent = `${d.model.replace(/([a-z])([A-Z0-9])/g, '$1 $2')} · ${d.address}`;
+  const badges = row.querySelector('.badges');
+  const mk = (t, ok) => { const b = document.createElement('span'); b.className = 'badge' + (ok ? ' ok' : ''); b.textContent = t; badges.appendChild(b); };
+  mk(airplay ? (airplay.paired ? 'Remote paired' : 'Remote not paired') : 'No remote protocol', airplay && airplay.paired);
+  mk(companion ? (companion.paired ? 'Apps paired' : 'Apps not paired') : 'No app protocol', companion && companion.paired);
+  const acts = row.querySelector('.acts');
+  const btn = (t, cls, fn) => { const b = document.createElement('button'); b.className = 'btn sm ' + cls; b.textContent = t; b.onclick = fn; acts.appendChild(b); return b; };
+  const anyPaired = (airplay && airplay.paired) || (companion && companion.paired);
+  if (airplay && !airplay.paired) btn('Pair remote', 'primary', () => startPair(d, 'airplay', row));
+  if (companion && !companion.paired) btn('Pair apps', airplay && airplay.paired ? 'primary' : '', () => startPair(d, 'companion', row));
+  if (anyPaired && !isCur) btn('Connect', 'primary', () => connect(d));
+  if (anyPaired) btn('Forget', 'danger', async () => { if (!confirm(`Forget pairing with "${d.name}"? You will need the PIN again.`)) return; try { await api('forget', { identifier: d.identifier }); toast('Forgotten'); refresh(); openDevices(); } catch (e) { toast(e.message, 'err'); } });
+  return row;
+}
+async function startPair(d, protocol, row) {
+  const box = row.querySelector('.pinbox');
+  box.innerHTML = '<div class="empty">Starting pairing… look at the TV.</div>';
+  try {
+    const r = await api('pair/start', { identifier: d.identifier, protocol });
+    if (r.needsPin) {
+      box.innerHTML = `<div class="hint">A PIN should now be on the TV screen. Type it here.</div><div class="pin"><input inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="0000" autofocus><button class="btn primary sm">Pair</button><button class="btn sm" data-cancel>Cancel</button></div>`;
+      const inp = box.querySelector('input'), go = box.querySelector('.primary');
+      inp.focus();
+      const finish = async () => {
+        if (!inp.value.trim()) return;
+        go.disabled = true; go.textContent = 'Pairing…';
+        try { await api('pair/finish', { pin: inp.value.trim() }); toast(`${protocol === 'airplay' ? 'Remote' : 'Apps'} pairing done`, 'ok'); await connect(d, true); openDevices(); }
+        catch (e) { toast(e.message, 'err'); go.disabled = false; go.textContent = 'Pair'; }
+      };
+      go.onclick = finish; inp.onkeydown = e => { if (e.key === 'Enter') finish(); };
+      box.querySelector('[data-cancel]').onclick = async () => { await api('pair/cancel', {}); box.innerHTML = ''; };
+    } else {
+      await api('pair/finish', { pin: null }); toast('Paired', 'ok'); await connect(d, true); openDevices();
+    }
+  } catch (e) { box.innerHTML = ''; toast(e.message, 'err'); }
+}
+async function connect(d, quiet) {
+  try { renderStatus(await api('connect', { identifier: d.identifier })); if (!quiet) { toast('Connected to ' + d.name, 'ok'); closeSheet(); } }
+  catch (e) { toast(e.message, 'err'); }
+}
+$('#devChip').onclick = openDevices; $('#bannerBtn').onclick = openDevices;
+
+// Add favorite sheet
+async function openAddSheet() {
+  const node = sheetTop('Add a favorite');
+  node.innerHTML += `<div class="tabs"><button data-tab="catalog" class="on">Popular</button><button data-tab="device">On this TV</button><button data-tab="custom">Custom</button></div><div class="pane"></div>`;
+  const pane = node.querySelector('.pane');
+  const tabs = $$('[data-tab]', node);
+  const show = async (which) => {
+    tabs.forEach(b => b.classList.toggle('on', b.dataset.tab === which));
+    pane.innerHTML = '';
+    if (which === 'catalog') {
+      const q = document.createElement('input'); q.placeholder = 'Filter…'; q.style.marginBottom = '8px'; pane.appendChild(q);
+      const list = document.createElement('div'); list.className = 'list'; pane.appendChild(list);
+      const draw = () => { list.innerHTML = ''; CATALOG.filter(c => c.label.toLowerCase().includes(q.value.toLowerCase())).forEach(c => list.appendChild(pickRow(c))); };
+      q.oninput = draw; draw();
+      const h = document.createElement('div'); h.className = 'hint'; h.textContent = 'These are the usual app IDs. If one does not open, use the "On this TV" tab, which lists exactly what is installed.'; pane.appendChild(h);
+    } else if (which === 'device') {
+      pane.innerHTML = '<div class="empty">Loading installed apps…</div>';
+      try {
+        const { apps } = await api('apps');
+        pane.innerHTML = '';
+        const q = document.createElement('input'); q.placeholder = 'Filter…'; q.style.marginBottom = '8px'; pane.appendChild(q);
+        const list = document.createElement('div'); list.className = 'list'; pane.appendChild(list);
+        const draw = () => { list.innerHTML = ''; apps.filter(a => (a.name || '').toLowerCase().includes(q.value.toLowerCase())).forEach(a => { const c = CATALOG.find(x => x.value === a.identifier); list.appendChild(pickRow({ label: a.name, icon: c ? c.icon : '', color: c ? c.color : '', kind: 'app', value: a.identifier })); }); };
+        q.oninput = draw; draw();
+      } catch (e) { pane.innerHTML = `<div class="empty">${e.message}</div>`; }
+    } else {
+      pane.appendChild(favForm(null));
+    }
+  };
+  tabs.forEach(b => b.onclick = () => show(b.dataset.tab));
+  openSheet(node); show('catalog');
+}
+function pickRow(c) {
+  const b = document.createElement('button'); b.className = 'item';
+  b.appendChild(iconEl(c));
+  const t = document.createElement('div'); t.className = 't'; t.innerHTML = '<b></b><small></small>'; t.querySelector('b').textContent = c.label; t.querySelector('small').textContent = c.value; b.appendChild(t);
+  const plus = document.createElement('span'); plus.className = 'plus'; plus.textContent = '+'; b.appendChild(plus);
+  if (favs.some(f => f.value === c.value && f.kind === c.kind)) { b.classList.add('added'); plus.textContent = '✓'; }
+  b.onclick = () => { if (b.classList.contains('added')) return; favs.push(Object.assign({ id: uid() }, c)); saveFavs(); b.classList.add('added'); plus.textContent = '✓'; toast('Added ' + c.label, 'ok'); };
+  return b;
+}
+const KIND_HINTS = {
+  app: 'Bundle ID, e.g. com.netflix.Netflix. The "On this TV" tab shows the exact IDs installed.',
+  link: 'A deep link the TV app understands. Examples: https://www.netflix.com/title/80057281 · https://www.youtube.com/watch?v=VIDEO_ID · https://tv.apple.com/us/show/… · disneyplus://… Whether it opens depends on that app.',
+  text: 'Text to type into whatever field is focused on the TV.',
+  cmd: 'One remote button: up, down, left, right, select, menu, home, home_hold, top_menu, play, pause, play_pause, next, previous, skip_forward, skip_backward, volume_up, volume_down, control_center, screensaver, suspend, wakeup.',
+  seq: 'One step per line: a button name (add x3 to repeat), "wait 800", "launch com.plexapp.plex", "type hello". Example:\nhome\nwait 700\nlaunch com.netflix.Netflix',
+};
+function favForm(existing, index) {
+  const f = existing || { label: '', icon: '', kind: 'app', value: '' };
+  const d = document.createElement('div'); d.className = 'form';
+  d.innerHTML = `
+    <div class="two"><div><label>Icon</label><input name="icon" placeholder="🎬 or NF" maxlength="12"></div><div><label>Name</label><input name="label" placeholder="Severance" required></div></div>
+    <div class="iconpick" data-iconpick></div>
+    <div class="hint" style="margin-top:-2px">Pick an icon above, or type an emoji or up to 5 letters.</div>
+    <div><label>Type</label><div class="seg" data-kind>
+      <button type="button" data-k="app">App</button><button type="button" data-k="link">Link</button><button type="button" data-k="text">Text</button><button type="button" data-k="cmd">Button</button><button type="button" data-k="seq">Macro</button></div></div>
+    <div><label>Value</label><textarea name="value" rows="2"></textarea><div class="hint" data-hint></div></div>
+    <div class="actions"><button type="button" class="btn" data-cancel>Cancel</button><button type="button" class="btn primary" data-save>${existing ? 'Save' : 'Add'}</button></div>`;
+  const inIcon = d.querySelector('[name=icon]'), inLabel = d.querySelector('[name=label]'), inVal = d.querySelector('[name=value]'), hint = d.querySelector('[data-hint]');
+  inIcon.value = f.icon || ''; inLabel.value = f.label || ''; inVal.value = f.value || '';
+  const pick = d.querySelector('[data-iconpick]');
+  const drawPick = () => { $$('button', pick).forEach(b => b.classList.toggle('on', b.dataset.icon === inIcon.value.trim())); };
+  ICON_KEYS.forEach(k => { const b = document.createElement('button'); b.type = 'button'; b.dataset.icon = k; b.title = k; b.style.background = ICONS[k].bg; b.innerHTML = ICONS[k].svg; b.onclick = () => { inIcon.value = inIcon.value.trim() === k ? '' : k; drawPick(); }; pick.appendChild(b); });
+  inIcon.oninput = drawPick; drawPick();
+  let kind = f.kind || 'app';
+  const setKind = k => { kind = k; $$('[data-k]', d).forEach(b => b.classList.toggle('on', b.dataset.k === k)); hint.textContent = KIND_HINTS[k]; hint.style.whiteSpace = k === 'seq' ? 'pre-line' : 'normal'; inVal.rows = k === 'seq' ? 4 : 2; };
+  $$('[data-k]', d).forEach(b => b.onclick = () => setKind(b.dataset.k)); setKind(kind);
+  d.querySelector('[data-cancel]').onclick = closeSheet;
+  d.querySelector('[data-save]').onclick = () => {
+    const label = inLabel.value.trim(), value = inVal.value.trim();
+    if (!label) { toast('Give it a name', 'err'); inLabel.focus(); return; }
+    if (!value) { toast('Value is required', 'err'); inVal.focus(); return; }
+    const item = { id: f.id || uid(), label, icon: inIcon.value.trim(), color: f.color, kind, value };
+    if (existing != null && index != null) favs[index] = item; else favs.push(item);
+    saveFavs(); closeSheet(); toast(existing ? 'Saved' : 'Added ' + label, 'ok');
+  };
+  return d;
+}
+function openFavForm(f, i) { const node = sheetTop('Edit favorite'); node.appendChild(favForm(f, i)); openSheet(node); }
+
+// Settings sheet
+function openSettings() {
+  const node = sheetTop('Settings');
+  node.innerHTML += `
+    <div class="setting"><div class="t"><b>Appearance</b><small>Dark is the default. Light is here for daytime.</small></div><div class="seg" data-theme-seg><button data-v="dark">Dark</button><button data-v="light">Light</button></div></div>
+    <div class="setting"><div class="t"><b>Remote layout</b><small>Classic is the round touch-style pad. Grid is a 3-column button board.</small></div><div class="seg" data-layout-seg><button data-v="classic">Classic</button><button data-v="grid">Grid</button></div></div>
+    <div class="setting"><div class="t"><b>Favorites backup</b><small>Copy this JSON somewhere safe, or paste one in and press Import.</small></div></div>
+    <textarea class="code" data-json></textarea>
+    <div class="actions" style="display:flex;gap:8px;justify-content:flex-end;margin:8px 0 14px"><button class="btn sm" data-copy>Copy</button><button class="btn sm" data-import>Import</button><button class="btn sm danger" data-reset>Reset to defaults</button></div>
+    <div class="setting"><div class="t"><b>Keyboard shortcuts</b><small>Work whenever you are not typing in a field.</small></div></div>
+    <div class="shortcuts">
+      <span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></span><span>Navigate (hold to repeat)</span>
+      <span><kbd>Enter</kbd></span><span>Select</span>
+      <span><kbd>Esc</kbd> / <kbd>⌫</kbd></span><span>Back</span>
+      <span><kbd>H</kbd></span><span>Home (TV button)</span>
+      <span><kbd>Space</kbd></span><span>Play / Pause</span>
+      <span><kbd>[</kbd> <kbd>]</kbd></span><span>Skip back / forward 10s</span>
+      <span><kbd>,</kbd> <kbd>.</kbd></span><span>Previous / Next</span>
+      <span><kbd>-</kbd> <kbd>=</kbd></span><span>Volume down / up</span>
+      <span><kbd>C</kbd></span><span>Control Center</span>
+      <span><kbd>P</kbd></span><span>Power (sleep / wake)</span>
+      <span><kbd>T</kbd></span><span>Jump to "Type on TV"</span>
+      <span><kbd>?</kbd></span><span>This panel</span>
+    </div>
+    <div class="hint" style="margin-top:16px">Mouse tips: hold Select for a long press, hold Home for Control Center, hold Back to jump to the top menu. Open <b>http://&lt;this Mac's IP&gt;:${location.port || 80}</b> on your phone to use the same remote there.</div>`;
+  const sync = () => { $$('[data-theme-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === html.getAttribute('data-theme'))); $$('[data-layout-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === html.getAttribute('data-layout'))); };
+  $$('[data-theme-seg] button', node).forEach(b => b.onclick = () => { setTheme(b.dataset.v); sync(); });
+  $$('[data-layout-seg] button', node).forEach(b => b.onclick = () => { setLayout(b.dataset.v); sync(); });
+  sync();
+  const ta = node.querySelector('[data-json]'); ta.value = JSON.stringify(favs, null, 2);
+  node.querySelector('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(ta.value); toast('Copied', 'ok'); } catch { ta.select(); toast('Select all and copy'); } };
+  node.querySelector('[data-import]').onclick = () => { try { const v = JSON.parse(ta.value); if (!Array.isArray(v)) throw 0; favs = v.filter(x => x && x.label && x.kind && x.value).map(x => Object.assign({ id: uid() }, x)); saveFavs(); toast('Imported ' + favs.length + ' favorites', 'ok'); } catch { toast('That is not a valid favorites JSON', 'err'); } };
+  node.querySelector('[data-reset]').onclick = () => { if (confirm('Replace your favorites with the defaults?')) { favs = DEFAULT_FAVS.map(f => Object.assign({}, f, { id: uid() })); saveFavs(); ta.value = JSON.stringify(favs, null, 2); } };
+  openSheet(node);
+}
+$('#settingsBtn').onclick = openSettings;
+
+// Type on TV
+$('#typeForm').onsubmit = async e => { e.preventDefault(); const v = $('#typeInput').value; if (!v) return; try { await api('text', { text: v }); toast('Sent to TV', 'ok'); $('#typeInput').value = ''; } catch (err) { toast(err.message, 'err'); } };
+$('#typeClear').onclick = async () => { try { await api('text', { text: '' }); $('#typeInput').value = ''; } catch (err) { toast(err.message, 'err'); } };
+
+// ---------- boot ----------
+renderFavs();
+(async () => {
+  await refresh();
+  startPolling();
+  if (!S.connected) openDevices();
+})();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+# Clicker
+
+A free, local web remote for Apple TV that runs on your Mac. Open it in a browser tab (or on your phone over Wi-Fi), pair once with the PIN on the TV, and you have navigation, playback, volume, power, typing, and a customizable grid of favorites that launch apps or jump straight to a show.
+
+Nothing leaves your network. There are no accounts, no subscriptions, and no telemetry. Pairing credentials are stored in `~/Library/Application Support/Clicker/`.
+
+## Start it
+
+Double-click `start.command` in Finder, or:
+
+```bash
+./start.command
+```
+
+The first run creates a Python virtual environment and installs [pyatv](https://pyatv.dev) (about a minute). After that it opens `http://localhost:8765/` in your browser.
+
+To try the interface with no Apple TV around:
+
+```bash
+./start.command --demo
+```
+
+## Pairing (one time per Apple TV)
+
+1. Open the device picker (the pill in the header) and wait for the scan.
+2. **Pair remote** (AirPlay): navigation, playback, volume. A 4-digit PIN appears on the TV. Type it in.
+3. **Pair apps** (Companion): launching apps, listing installed apps, typing into text fields, sleep and wake. Another PIN.
+4. Connect. Clicker remembers the last device and reconnects on the next launch.
+
+If a PIN never appears on the TV, check the Apple TV's **Settings, AirPlay and HomeKit, Allow Access** (set it to Everyone or Anyone on the Same Network while pairing).
+
+## Favorites
+
+Tiles come in five flavors:
+
+| Type | What it does | Value |
+|---|---|---|
+| App | Launches an app | Bundle ID, e.g. `com.netflix.Netflix` (the "On this TV" tab lists what is installed) |
+| Link | Opens a deep link inside the app | `https://www.netflix.com/title/80057281`, `https://www.youtube.com/watch?v=…`, `https://tv.apple.com/us/show/…` |
+| Text | Types into the focused field | Any string |
+| Button | One remote press | `screensaver`, `control_center`, `suspend`, `top_menu`, … |
+| Macro | A short sequence | One step per line: `home`, `wait 700`, `launch com.plexapp.plex`, `down x3`, `type hello` |
+
+Edit mode (pencil icon) lets you rename, remove, and drag to reorder. Settings has export and import as JSON.
+
+Whether a deep link actually opens the right show is up to that app. Netflix, YouTube, and Apple TV+ links generally work. Others vary.
+
+## Keyboard
+
+Arrows, Enter, Esc or Backspace for back, Space for play/pause, `H` home, `[` `]` skip, `,` `.` previous/next, `-` `=` volume, `C` Control Center, `P` power, `T` to focus the typing box, `?` for the full list.
+
+## Phone
+
+The server binds to all interfaces, so on the same Wi-Fi open `http://<your Mac's IP>:8765/` on a phone. Add it to the Home Screen for an app-like feel.
+
+## Layout
+
+- `server.py`: aiohttp server wrapping pyatv. Scan, pair, connect, commands, app list, launch, keyboard, power.
+- `index.html`: the whole UI. No build step, no framework, no external assets.
+- `start.command`: double-clickable launcher that bootstraps the venv on first run.
+
+## Limits worth knowing
+
+- Apple TV has no "mute" command over this protocol, so there is no mute button.
+- App launching, typing, and power need the Companion pairing (tvOS 13 or later; Apple TV 4K and HD).
+- The server must be running on the Mac for the remote to work.

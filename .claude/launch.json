@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "clicker-demo", "runtimeExecutable": ".venv/bin/python", "runtimeArgs": ["server.py", "--demo", "--no-open", "--port", "8765"], "port": 8765 },
+    { "name": "clicker", "runtimeExecutable": ".venv/bin/python", "runtimeArgs": ["server.py", "--no-open", "--port", "8765"], "port": 8765 }
+  ]
+}

@@ -1,6 +1,6 @@
-# Clicker
+# Colin's Cool Couch Clicker
 
-A free, local web remote for Apple TV that runs on your Mac. Open it in a browser tab (or on your phone over Wi-Fi), pair once with the PIN on the TV, and you have navigation, playback, volume, power, typing, and a customizable grid of favorites that launch apps or jump straight to a show.
+Colossally convenient couch control, courtesy of Colin. A free, local web remote for Apple TV that runs on your Mac. Open it in a browser tab (or on your phone over Wi-Fi), pair once with the PIN on the TV, and you have navigation, playback, volume, power, typing, and a customizable grid of favorites that launch apps or jump straight to a show.
 
 Nothing leaves your network. There are no accounts, no subscriptions, and no telemetry. Pairing credentials are stored in `~/Library/Application Support/Clicker/`.
 
@@ -45,9 +45,26 @@ Edit mode (pencil icon) lets you rename, remove, and drag to reorder. Settings h
 
 Whether a deep link actually opens the right show is up to that app. Netflix, YouTube, and Apple TV+ links generally work. Others vary.
 
+## Themes
+
+Dark (default), Light, and five for when the lights are off: Acid Trip, Lava Lamp, Vaporwave, Blacklight, and Rainbow Road. The theme button in the header opens the picker, or press `K`. The psychedelic ones animate; they respect the system "reduce motion" setting.
+
+## Share it with friends
+
+This cannot live on Vercel or any web host: the server has to sit on the same Wi-Fi as the Apple TV, so each person runs it on their own Mac. Send them this:
+
+```bash
+git clone https://github.com/lightsgoblack/clicker.git ~/Developer/clicker && ~/Developer/clicker/start.command
+```
+
+Or, without git: download the ZIP from GitHub, unzip it, and double-click `start.command`. Two macOS speed bumps on a fresh machine:
+
+- If macOS says the file "cannot be opened because it is from an unidentified developer", right-click `start.command` and choose Open once.
+- If `python3` is missing, macOS offers to install the Command Line Tools. Accept, wait, and run `start.command` again.
+
 ## Keyboard
 
-Arrows, Enter, Esc or Backspace for back, Space for play/pause, `H` home, `[` `]` skip, `,` `.` previous/next, `-` `=` volume, `C` Control Center, `P` power, `T` to focus the typing box, `?` for the full list.
+Arrows, Enter, Esc or Backspace for back, Space for play/pause, `H` home, `[` `]` skip, `,` `.` previous/next, `-` `=` volume, `C` Control Center, `P` power, `T` to focus the typing box, `K` themes, `?` for the full list.
 
 ## Phone
 

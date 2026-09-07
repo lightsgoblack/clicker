@@ -1,6 +1,6 @@
-# CLAUDE.md — Clicker
+# CLAUDE.md — Colin's Cool Couch Clicker
 
-Local web remote for Apple TV. Lives at `~/Developer/clicker` (never under `~/Documents`, which is iCloud-synced).
+Display name is "Colin's Cool Couch Clicker" (short: C⁴ Clicker); repo, folder, and localStorage prefix stay `clicker`. Local web remote for Apple TV. Lives at `~/Developer/clicker` (never under `~/Documents`, which is iCloud-synced).
 
 ## Shape
 - `server.py` — aiohttp + pyatv. One `State` object holds storage, current connection, in-progress pairing. Demo device classes at the bottom fake everything for `--demo`.
@@ -8,6 +8,8 @@ Local web remote for Apple TV. Lives at `~/Developer/clicker` (never under `~/Do
 - `start.command` — bootstraps `.venv` and runs the server. Never add a root `package.json`.
 - Credentials: `~/Library/Application Support/Clicker/credentials.json` via pyatv `FileStorage`. `prefs.json` beside it holds the last device. Neither is in the repo.
 - localStorage keys are prefixed `clicker_` (`theme`, `layout`, `favs`).
+- Themes: `THEMES` array in JS + one `:root[data-theme=...]` block each. Psychedelic ones set `data-psy` on `<html>`, which makes `body` transparent so the animated `body::before` ground shows (an opaque body paints over a negative z-index pseudo-element; that cost a debugging round). Rainbow hue is a JS ticker on `--hue`, not a CSS animation.
+- Colin paired "Great Room" for real on 2026-09-06 and it connected; the pairing flow is verified on a device.
 
 ## Protocol facts that bit or will bite
 - tvOS 15+ does not advertise MRP separately; remote control rides over AirPlay, so **"Pair remote" = AirPlay pairing**. **"Pair apps" = Companion pairing** (app list, launch, keyboard, power, `home`). Both need a PIN typed from the TV screen.

@@ -6,14 +6,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b0c0f">
-<title>Clicker</title>
+<title>Colin's Cool Couch Clicker</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0c0f'/%3E%3Crect x='22' y='10' width='20' height='44' rx='6' fill='%23f0b35c'/%3E%3Ccircle cx='32' cy='24' r='5' fill='%230b0c0f'/%3E%3C/svg%3E">
 <script>
   // Pre-paint: theme + layout so there is no flash.
   // Values are stored JSON-encoded (see `store` below), so parse them here too.
   try {
     var rd = function (k, ok, d) { try { var v = JSON.parse(localStorage.getItem('clicker_' + k)); return ok.indexOf(v) >= 0 ? v : d; } catch (e) { return d; } };
-    document.documentElement.setAttribute('data-theme', rd('theme', ['dark', 'light'], 'dark'));
+    var th = rd('theme', ['dark', 'light', 'acid', 'lava', 'vapor', 'uv', 'rainbow'], 'dark');
+    document.documentElement.setAttribute('data-theme', th);
+    if (['acid', 'lava', 'vapor', 'uv', 'rainbow'].indexOf(th) >= 0) document.documentElement.setAttribute('data-psy', '');
     document.documentElement.setAttribute('data-layout', rd('layout', ['classic', 'grid'], 'classic'));
   } catch (e) {}
 </script>
@@ -34,6 +36,67 @@
   --key:#ffffff; --key-hi:#f2f0ea; --key-ink:#1a1a1f;
   color-scheme:light;
 }
+
+/* ---------- Psychedelic themes: animated grounds under glassy cards ---------- */
+@property --hue { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+:root[data-theme="acid"]{
+  --bg:#0d0618; --surface:rgba(26,12,48,.74); --surface2:rgba(44,20,80,.72); --surface3:rgba(64,30,112,.78);
+  --border:rgba(57,255,20,.22); --border2:rgba(57,255,20,.45); --text:#f2ffe9; --muted:#a6f39a; --faint:#63a35a;
+  --accent:#39ff14; --accent2:#25d30a; --on-accent:#06120a; --accent-soft:rgba(57,255,20,.18);
+  --danger:#ff2bd6; --ok:#39ff14; --shadow:0 10px 30px rgba(0,0,0,.6);
+  --key:rgba(22,10,44,.72); --key-hi:rgba(57,255,20,.14); --key-ink:#eaffe3; color-scheme:dark;
+}
+:root[data-theme="lava"]{
+  --bg:#180407; --surface:rgba(46,10,18,.72); --surface2:rgba(74,16,28,.7); --surface3:rgba(104,24,40,.76);
+  --border:rgba(255,120,60,.22); --border2:rgba(255,120,60,.45); --text:#fff1e6; --muted:#ffb08a; --faint:#a8604a;
+  --accent:#ff6a00; --accent2:#e04e00; --on-accent:#1a0800; --accent-soft:rgba(255,106,0,.18);
+  --danger:#ff2d55; --ok:#ffd60a; --shadow:0 10px 30px rgba(0,0,0,.6);
+  --key:rgba(40,8,16,.72); --key-hi:rgba(255,106,0,.16); --key-ink:#fff1e6; color-scheme:dark;
+}
+:root[data-theme="vapor"]{
+  --bg:#1a0b3a; --surface:rgba(38,18,80,.7); --surface2:rgba(58,28,110,.7); --surface3:rgba(80,40,140,.76);
+  --border:rgba(1,205,254,.28); --border2:rgba(255,113,206,.5); --text:#fdf3ff; --muted:#b8a6ff; --faint:#7a68c0;
+  --accent:#ff71ce; --accent2:#e650b0; --on-accent:#2a0a24; --accent-soft:rgba(255,113,206,.18);
+  --danger:#ff4f7b; --ok:#05ffa1; --shadow:0 10px 30px rgba(0,0,0,.55);
+  --key:rgba(30,12,70,.72); --key-hi:rgba(1,205,254,.16); --key-ink:#fdf3ff; color-scheme:dark;
+}
+:root[data-theme="uv"]{
+  --bg:#05000f; --surface:rgba(18,6,40,.7); --surface2:rgba(30,10,64,.7); --surface3:rgba(48,16,96,.76);
+  --border:rgba(176,38,255,.3); --border2:rgba(176,38,255,.6); --text:#ecdcff; --muted:#b58cf0; --faint:#6a4a9a;
+  --accent:#c04dff; --accent2:#9a1fe6; --on-accent:#fff; --accent-soft:rgba(176,38,255,.2);
+  --danger:#ff2bd6; --ok:#7dff6a; --shadow:0 10px 30px rgba(0,0,0,.7);
+  --key:rgba(16,4,36,.74); --key-hi:rgba(176,38,255,.18); --key-ink:#ecdcff; color-scheme:dark;
+}
+:root[data-theme="rainbow"]{
+  --hue:0deg;
+  --bg:#0a0a10; --surface:rgba(22,22,32,.74); --surface2:rgba(36,36,52,.72); --surface3:rgba(52,52,74,.78);
+  --border:hsl(var(--hue) 90% 60% / .3); --border2:hsl(var(--hue) 90% 60% / .55); --text:#fff; --muted:#b9bcd0; --faint:#6e7188;
+  --accent:hsl(var(--hue) 100% 62%); --accent2:hsl(var(--hue) 90% 50%); --on-accent:#0a0a10; --accent-soft:hsl(var(--hue) 100% 62% / .2);
+  --danger:#ff375f; --ok:#30d158; --shadow:0 10px 30px rgba(0,0,0,.6);
+  --key:rgba(20,20,30,.74); --key-hi:hsl(var(--hue) 100% 62% / .16); --key-ink:#fff; color-scheme:dark;
+}
+@keyframes spinSlow{to{transform:rotate(360deg)}}
+@keyframes drift{0%{background-position:0% 0%,100% 100%,50% 0%}50%{background-position:100% 50%,0% 40%,80% 100%}100%{background-position:20% 100%,60% 0%,0% 60%}}
+@keyframes pulseGlow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
+@keyframes slide{to{background-position:400% 0}}
+html[data-psy] body{background:transparent}
+html[data-psy] body::before{content:"";position:fixed;inset:-30%;z-index:-1;pointer-events:none;will-change:transform}
+html[data-theme="acid"] body::before{background:conic-gradient(from 0deg,#ff00c8,#39ff14,#00e5ff,#ff9d00,#8a2be2,#ff00c8);filter:blur(70px) saturate(1.5);opacity:.5;animation:spinSlow 28s linear infinite}
+html[data-theme="lava"] body::before{inset:0;background:radial-gradient(40% 50% at 20% 30%,#ff5e00 0%,transparent 60%),radial-gradient(45% 55% at 80% 70%,#ff1e8c 0%,transparent 60%),radial-gradient(50% 50% at 50% 90%,#8a00ff 0%,transparent 60%);background-size:180% 180%,180% 180%,180% 180%;filter:blur(50px) saturate(1.3);opacity:.55;animation:drift 22s ease-in-out infinite alternate}
+html[data-theme="vapor"] body::before{inset:0;background:linear-gradient(120deg,#ff71ce,#01cdfe,#b967ff,#05ffa1,#fffb96,#ff71ce);background-size:400% 100%;filter:blur(40px) saturate(1.2);opacity:.42;animation:slide 40s linear infinite}
+html[data-theme="vapor"] body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:45vh;z-index:-1;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(1,205,254,.28) 0 1px,transparent 1px 34px),repeating-linear-gradient(90deg,rgba(255,113,206,.22) 0 1px,transparent 1px 44px);transform:perspective(420px) rotateX(58deg);transform-origin:bottom;mask-image:linear-gradient(to top,rgba(0,0,0,.9),transparent)}
+html[data-theme="uv"] body::before{inset:0;background:radial-gradient(35% 45% at 25% 25%,#7a00ff 0%,transparent 60%),radial-gradient(40% 50% at 75% 75%,#b026ff 0%,transparent 60%),radial-gradient(30% 30% at 60% 20%,#3b00b3 0%,transparent 60%);filter:blur(60px);opacity:.6;animation:pulseGlow 7s ease-in-out infinite}
+html[data-theme="rainbow"] body::before{inset:0;background:linear-gradient(115deg,#ff004c,#ff9d00,#ffe600,#00ff85,#00c8ff,#7a00ff,#ff00c8,#ff004c);background-size:400% 100%;filter:blur(60px) saturate(1.3);opacity:.35;animation:slide 30s linear infinite}
+html[data-psy] .card,html[data-psy] .sheet,html[data-psy] .chip,html[data-psy] .icon-btn{backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2)}
+html[data-psy] .key:active,html[data-psy] .key.down{box-shadow:0 0 18px var(--accent)}
+html[data-psy] .dpad{background:var(--key)}
+@media (prefers-reduced-motion:reduce){html[data-psy] body::before{animation:none}}
+/* Theme picker */
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
+.themes button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px;border-radius:14px;border:1px solid var(--border);background:var(--surface2);font-size:12px;font-weight:600;color:var(--muted)}
+.themes button .sw{width:46px;height:46px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.15),0 3px 8px rgba(0,0,0,.35)}
+.themes button.on{border-color:var(--accent);color:var(--text);box-shadow:0 0 0 2px var(--accent-soft)}
+.themes button.on .sw{box-shadow:inset 0 0 0 3px var(--bg),0 0 0 2px var(--accent)}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 body{min-height:100dvh;padding:max(12px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
@@ -47,7 +110,9 @@ kbd{font:12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--sur
 
 /* Header */
 header{display:flex;align-items:center;gap:10px;padding:6px 0 16px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:17px;white-space:nowrap}
+.brand .short{display:none}
+@media (max-width:640px){.brand .full{display:none}.brand .short{display:inline}}
 .brand .mark{flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}
 .spacer{flex:1}
 .chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:13px;max-width:52vw}
@@ -213,7 +278,7 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><svg class="mark" viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="13" fill="var(--accent)"/><rect x="17" y="8" width="14" height="32" rx="5" fill="var(--bg)"/><circle cx="24" cy="17" r="3.6" fill="var(--accent)"/><rect x="20" y="25" width="8" height="2.4" rx="1.2" fill="var(--accent)"/><rect x="20" y="30" width="8" height="2.4" rx="1.2" fill="var(--accent)"/></svg>Clicker</div>
+    <div class="brand"><svg class="mark" viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="13" fill="var(--accent)"/><rect x="17" y="8" width="14" height="32" rx="5" fill="var(--bg)"/><circle cx="24" cy="17" r="3.6" fill="var(--accent)"/><rect x="20" y="25" width="8" height="2.4" rx="1.2" fill="var(--accent)"/><rect x="20" y="30" width="8" height="2.4" rx="1.2" fill="var(--accent)"/></svg><span class="full">Colin's Cool Couch Clicker</span><span class="short">C⁴ Clicker</span></div>
     <div class="spacer"></div>
     <button class="chip" id="devChip" title="Devices"><i class="dot"></i><span id="devName">Not connected</span></button>
     <button class="icon-btn" id="editBtn" title="Edit favorites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
@@ -314,7 +379,7 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
       </section>
     </div>
   </div>
-  <footer>Clicker runs on this Mac and talks to the Apple TV over your Wi-Fi. Nothing leaves your network. Press <kbd>?</kbd> for keyboard shortcuts.</footer>
+  <footer>Colossally convenient couch control, courtesy of Colin. Runs on this Mac, talks to the Apple TV over your Wi-Fi, nothing leaves your network. Press <kbd>?</kbd> for keyboard shortcuts.</footer>
 </div>
 
 <div id="sheetRoot"></div>
@@ -354,9 +419,36 @@ function toast(msg, kind = '') {
 }
 
 // ---------- theme / layout ----------
-function setTheme(t) { html.setAttribute('data-theme', t); store.set('theme', t); $('#sun').hidden = t !== 'dark'; $('#moon').hidden = t === 'dark'; $('meta[name=theme-color]').content = t === 'dark' ? '#0b0c0f' : '#f3f2ee'; }
+const THEMES = [
+  { id: 'dark', label: 'Dark', bar: '#0b0c0f', sw: 'linear-gradient(135deg,#0b0c0f 45%,#f0b35c 46%)' },
+  { id: 'light', label: 'Light', bar: '#f3f2ee', sw: 'linear-gradient(135deg,#f3f2ee 45%,#b8741a 46%)' },
+  { id: 'acid', label: 'Acid Trip', psy: true, bar: '#0d0618', sw: 'conic-gradient(#ff00c8,#39ff14,#00e5ff,#ff9d00,#8a2be2,#ff00c8)' },
+  { id: 'lava', label: 'Lava Lamp', psy: true, bar: '#180407', sw: 'radial-gradient(circle at 30% 30%,#ff5e00,#ff1e8c 55%,#8a00ff)' },
+  { id: 'vapor', label: 'Vaporwave', psy: true, bar: '#1a0b3a', sw: 'linear-gradient(120deg,#ff71ce,#01cdfe,#b967ff,#05ffa1)' },
+  { id: 'uv', label: 'Blacklight', psy: true, bar: '#05000f', sw: 'radial-gradient(circle at 40% 40%,#c04dff,#3b00b3 60%,#05000f)' },
+  { id: 'rainbow', label: 'Rainbow Road', psy: true, bar: '#0a0a10', sw: 'conic-gradient(#ff004c,#ff9d00,#ffe600,#00ff85,#00c8ff,#7a00ff,#ff00c8,#ff004c)' },
+];
+function setTheme(t) {
+  const th = THEMES.find(x => x.id === t) || THEMES[0]; t = th.id;
+  html.setAttribute('data-theme', t); store.set('theme', t);
+  if (th.psy) html.setAttribute('data-psy', ''); else html.removeAttribute('data-psy');
+  $('#sun').hidden = t === 'light'; $('#moon').hidden = t !== 'light';
+  $('meta[name=theme-color]').content = th.bar;
+  clearInterval(hueTimer); html.style.removeProperty('--hue');
+  if (t === 'rainbow' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let deg = 0; hueTimer = setInterval(() => { deg = (deg + 1) % 360; html.style.setProperty('--hue', deg + 'deg'); }, 60);
+  }
+}
+let hueTimer = null;
 setTheme(html.getAttribute('data-theme'));
-$('#themeBtn').onclick = () => setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+function themeGrid() {
+  const g = document.createElement('div'); g.className = 'themes';
+  const draw = () => $$('button', g).forEach(b => b.classList.toggle('on', b.dataset.t === html.getAttribute('data-theme')));
+  THEMES.forEach(th => { const b = document.createElement('button'); b.dataset.t = th.id; b.innerHTML = '<span class="sw"></span><span></span>'; b.querySelector('.sw').style.background = th.sw; b.lastChild.textContent = th.label; b.onclick = () => { setTheme(th.id); draw(); }; g.appendChild(b); });
+  draw(); return g;
+}
+function openThemes() { const node = sheetTop('Theme', 'Dark and Light are the sensible ones. The rest are for when the lights are off.'); node.appendChild(themeGrid()); openSheet(node); }
+$('#themeBtn').onclick = openThemes;
 function setLayout(l) { html.setAttribute('data-layout', l); store.set('layout', l); $('#layoutBtn').textContent = l === 'classic' ? 'Grid layout' : 'Classic layout'; }
 setLayout(html.getAttribute('data-layout'));
 $('#layoutBtn').onclick = () => setLayout(html.getAttribute('data-layout') === 'classic' ? 'grid' : 'classic');
@@ -420,6 +512,7 @@ document.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (S.sheet) { if (e.key === 'Escape') closeSheet(); return; }
   if (e.key === '?') { e.preventDefault(); openSettings(); return; }
+  if (e.key === 'k' || e.key === 'K') { e.preventDefault(); openThemes(); return; }
   if (e.key === 't' || e.key === 'T') { e.preventDefault(); $('#typeInput').focus(); return; }
   const name = KEYS[e.key];
   if (!name) return;
@@ -797,7 +890,8 @@ function openFavForm(f, i) { const node = sheetTop('Edit favorite'); node.append
 function openSettings() {
   const node = sheetTop('Settings');
   node.innerHTML += `
-    <div class="setting"><div class="t"><b>Appearance</b><small>Dark is the default. Light is here for daytime.</small></div><div class="seg" data-theme-seg><button data-v="dark">Dark</button><button data-v="light">Light</button></div></div>
+    <div class="setting"><div class="t"><b>Theme</b><small>Dark is the default. Five of these are not for the faint of heart.</small></div></div>
+    <div data-theme-grid style="margin-bottom:6px"></div>
     <div class="setting"><div class="t"><b>Remote layout</b><small>Classic is the round touch-style pad. Grid is a 3-column button board.</small></div><div class="seg" data-layout-seg><button data-v="classic">Classic</button><button data-v="grid">Grid</button></div></div>
     <div class="setting"><div class="t"><b>Favorites backup</b><small>Copy this JSON somewhere safe, or paste one in and press Import.</small></div></div>
     <textarea class="code" data-json></textarea>
@@ -815,11 +909,12 @@ function openSettings() {
       <span><kbd>C</kbd></span><span>Control Center</span>
       <span><kbd>P</kbd></span><span>Power (sleep / wake)</span>
       <span><kbd>T</kbd></span><span>Jump to "Type on TV"</span>
+      <span><kbd>K</kbd></span><span>Theme picker</span>
       <span><kbd>?</kbd></span><span>This panel</span>
     </div>
     <div class="hint" style="margin-top:16px">Mouse tips: hold Select for a long press, hold Home for Control Center, hold Back to jump to the top menu. Open <b>http://&lt;this Mac's IP&gt;:${location.port || 80}</b> on your phone to use the same remote there.</div>`;
-  const sync = () => { $$('[data-theme-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === html.getAttribute('data-theme'))); $$('[data-layout-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === html.getAttribute('data-layout'))); };
-  $$('[data-theme-seg] button', node).forEach(b => b.onclick = () => { setTheme(b.dataset.v); sync(); });
+  const sync = () => { $$('[data-layout-seg] button', node).forEach(b => b.classList.toggle('on', b.dataset.v === html.getAttribute('data-layout'))); };
+  node.querySelector('[data-theme-grid]').appendChild(themeGrid());
   $$('[data-layout-seg] button', node).forEach(b => b.onclick = () => { setLayout(b.dataset.v); sync(); });
   sync();
   const ta = node.querySelector('[data-json]'); ta.value = JSON.stringify(favs, null, 2);

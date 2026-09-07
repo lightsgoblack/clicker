@@ -1365,7 +1365,7 @@ function renderKid(st) { const on = !!(st && st.kidMode); html.toggleAttribute('
 function pinPrompt(title, sub, cb) {
   const node = sheetTop(title, sub); const f = document.createElement('div'); f.className = 'pin'; f.style.justifyContent = 'center';
   f.innerHTML = '<input inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="PIN" autofocus><button class="btn primary sm">OK</button>';
-  node.appendChild(f); const sheet = openSheet(node); sheet.dataset.kid = '1';
+  node.appendChild(f); openSheet(node); S.sheet.dataset.kid = '1';
   const inp = f.querySelector('input'), go = f.querySelector('button'); inp.focus();
   const done = () => { const v = inp.value.trim(); if (!v) return; cb(v); };
   go.onclick = done; inp.onkeydown = e => { if (e.key === 'Enter') done(); };

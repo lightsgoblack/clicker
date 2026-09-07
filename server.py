@@ -43,7 +43,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -676,7 +676,8 @@ class InfoService:
             out["factsError"] = f"Facts unavailable: {e}"
         out["source"] = "hosted" if self.hosted_meter else ("own" if self.state.prefs.get("anthropic_key") else "hosted")
         out["meter"] = self.hosted_meter
-        self._remember(key, out)
+        if out["facts"]:  # never cache a failure; the next tap should try again
+            self._remember(key, out)
         return {**out, "cached": False}
 
 

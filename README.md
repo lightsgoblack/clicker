@@ -47,7 +47,7 @@ Whether a deep link actually opens the right show is up to that app. Netflix, Yo
 
 ## Themes
 
-Dark (default), Light, two ink themes (Blackwork: bone on black; Flash Sheet: black on bone paper, both monochrome and brutalist with tattoo-flash ornament), and five for when the lights are off: Acid Trip, Lava Lamp, Vaporwave, Blacklight, and Rainbow Road. The theme button in the header opens the picker, or press `K`. The psychedelic ones animate; they respect the system "reduce motion" setting.
+Nineteen of them. Dark (default) and Light. Five for when the lights are off: Acid Trip, Lava Lamp, Vaporwave, Blacklight, Rainbow Road. CHAOS. Terminal, VHS, Blueprint, Braun, Ransom Note, Late Show, Monolith, and Rick Owens Light. Three that react to the world: Sunset follows the real time of day, Reactive follows play/pause, Per-app skin dresses up as whatever app is open. The theme button in the header opens the picker, or press `K`. The psychedelic ones animate; they respect the system "reduce motion" setting.
 
 ## Install on any Mac (the easy way)
 

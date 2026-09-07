@@ -47,20 +47,33 @@ Whether a deep link actually opens the right show is up to that app. Netflix, Yo
 
 ## Themes
 
-Dark (default), Light, and five for when the lights are off: Acid Trip, Lava Lamp, Vaporwave, Blacklight, and Rainbow Road. The theme button in the header opens the picker, or press `K`. The psychedelic ones animate; they respect the system "reduce motion" setting.
+Dark (default), Light, two ink themes (Blackwork: bone on black; Flash Sheet: black on bone paper, both monochrome and brutalist with tattoo-flash ornament), and five for when the lights are off: Acid Trip, Lava Lamp, Vaporwave, Blacklight, and Rainbow Road. The theme button in the header opens the picker, or press `K`. The psychedelic ones animate; they respect the system "reduce motion" setting.
+
+## Install on any Mac (the easy way)
+
+Paste this one line into Terminal (press `Cmd+Space`, type Terminal, press Return) and hit Return:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lightsgoblack/clicker/main/install.sh | bash
+```
+
+That builds a `Clicker` app in your Applications folder, installs its one dependency inside it, and opens it. From then on, open Clicker from Launchpad or Spotlight like any app. It runs quietly in the background and opens the remote in your browser. Quit it from the gear menu in the remote.
+
+The only speed bump: if the Mac has never had Apple's Command Line Tools, a dialog offers to install them. Click Install, wait, and the installer continues on its own.
+
+Because the app is assembled on your own Mac rather than downloaded as an app, there is no "unidentified developer" warning to fight.
 
 ## Share it with friends
 
-This cannot live on Vercel or any web host: the server has to sit on the same Wi-Fi as the Apple TV, so each person runs it on their own Mac. Send them this:
+This cannot live on Vercel or any web host: the server has to sit on the same Wi-Fi as the Apple TV, so each person runs it on their own Mac. Send them the one-line install above. They need a Mac on the same Wi-Fi as their Apple TV, and the PIN the TV shows during the two pairing steps. That is the whole setup. Phones then work by opening the Mac's address in a browser while the Mac is awake.
+
+## Developer install
 
 ```bash
 git clone https://github.com/lightsgoblack/clicker.git ~/Developer/clicker && ~/Developer/clicker/start.command
 ```
 
-Or, without git: download the ZIP from GitHub, unzip it, and double-click `start.command`. Two macOS speed bumps on a fresh machine:
-
-- If macOS says the file "cannot be opened because it is from an unidentified developer", right-click `start.command` and choose Open once.
-- If `python3` is missing, macOS offers to install the Command Line Tools. Accept, wait, and run `start.command` again.
+`mac/` holds the app-bundle pieces (`Info.plist`, `launcher.sh`, `AppIcon.icns`, regenerated from `icon.svg` with `qlmanage` + `iconutil`). `install.sh` assembles them into `~/Applications/Clicker.app`; set `CLICKER_SRC=/path/to/checkout` to build from a local copy instead of downloading.
 
 ## Keyboard
 

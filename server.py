@@ -19,6 +19,7 @@ import asyncio
 import json
 import logging
 import os
+import signal
 import sys
 import webbrowser
 from pathlib import Path
@@ -573,6 +574,12 @@ def routes(state: State):
             return json_error(f"Power failed: {e}", 500)
         return web.json_response({"ok": True})
 
+    @r.post("/api/quit")
+    async def quit_(_):
+        loop = asyncio.get_event_loop()
+        loop.call_later(0.3, lambda: os.kill(os.getpid(), signal.SIGTERM))
+        return web.json_response({"ok": True})
+
     @r.get("/api/demo/log")
     async def demo_log(_):
         if not state.demo or state.atv is None:
@@ -628,6 +635,17 @@ def main():
     app = loop.run_until_complete(make_app(state))
 
     url = f"http://localhost:{args.port}/"
+    # Already running (double-launch from the Dock, a second start.command)? Just open the page.
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{args.port}/api/status", timeout=1) as r:
+            if json.loads(r.read().decode()).get("ok"):
+                print(f"\n  Clicker is already running at {url}\n")
+                if not args.no_open:
+                    webbrowser.open(url)
+                return
+    except Exception:
+        pass
     print(f"\n  Clicker is running at {url}{'  (demo mode)' if args.demo else ''}\n  Press Ctrl+C to stop.\n")
     if not args.no_open:
         loop.call_later(0.8, webbrowser.open, url)

@@ -906,6 +906,14 @@ function fitPhone() {
   const target = Math.min(screen.width, innerWidth);            // the width we actually have to draw into
   const ratio = innerWidth / target;
   [ $('.wrap'), $('#sheetRoot'), $('#toasts') ].forEach(e => { if (!e) return; e.style.zoom = ratio > 1.08 ? ratio.toFixed(3) : ''; });
+  // Status bar / Dynamic Island: env(safe-area-inset-top) comes back in unscaled units, so when the page is
+  // being scaled down it covers only part of the notch. Measure it and scale it back up.
+  let probe = $('#safeProbe');
+  if (!probe) { probe = document.createElement('div'); probe.id = 'safeProbe'; probe.style.cssText = 'position:fixed;top:0;left:0;height:env(safe-area-inset-top);width:1px;visibility:hidden;pointer-events:none'; document.body.appendChild(probe); }
+  const inset = probe.getBoundingClientRect().height;
+  const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  const top = Math.max(12, inset * (ratio > 1.08 ? ratio : 1) + (standalone ? 6 : 0));
+  document.body.style.paddingTop = top + 'px';
 }
 fitPhone();
 window.addEventListener('resize', fitPhone);

@@ -211,8 +211,8 @@ html[data-theme="terminal"] .tile .lbl{text-transform:lowercase} html[data-theme
 html[data-theme="vhs"] body{filter:saturate(1.15) contrast(1.05);animation:vhsShake 7s infinite}
 html[data-theme="vhs"] body::before{content:"";position:fixed;inset:0;z-index:5;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
 html[data-theme="vhs"] body::after{content:"";position:fixed;left:0;right:0;height:9%;z-index:6;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(255,255,255,.14) 40%,rgba(0,0,0,.25) 60%,transparent);filter:blur(2px);animation:vhsTrack 9s linear infinite;mix-blend-mode:screen}
-html[data-theme="vhs"] .wrap::before{content:"▶ PLAY   SP 0:00:00";position:fixed;left:24px;top:14px;z-index:7;font-family:"VT323","Courier New",monospace;font-size:20px;letter-spacing:.08em;color:#fff;text-shadow:2px 0 #f0f,-2px 0 #0ff}
-html[data-theme="vhs"] .wrap::after{content:"● REC";position:fixed;right:24px;top:14px;z-index:7;font-family:"Courier New",monospace;font-weight:700;color:#ff3b3b;animation:blink 1.4s steps(2) infinite}
+html[data-theme="vhs"] .wrap::before{content:"▶ PLAY   SP 0:00:00";position:fixed;left:24px;top:calc(var(--safe-top-z,0px) + 12px);z-index:7;font-family:"VT323","Courier New",monospace;font-size:20px;letter-spacing:.08em;color:#fff;text-shadow:2px 0 #f0f,-2px 0 #0ff}
+html[data-theme="vhs"] .wrap::after{content:"● REC";position:fixed;right:24px;top:calc(var(--safe-top-z,0px) + 12px);z-index:7;font-family:"Courier New",monospace;font-weight:700;color:#ff3b3b;animation:blink 1.4s steps(2) infinite}
 html[data-theme="vhs"] header{margin-top:26px}
 html[data-theme="vhs"] .brand,html[data-theme="vhs"] .np .title,html[data-theme="vhs"] .card h2{text-shadow:1.5px 0 rgba(255,0,255,.55),-1.5px 0 rgba(0,255,255,.55)}
 html[data-theme="vhs"] .card{border-radius:6px;box-shadow:inset 0 0 40px rgba(0,0,0,.35)}
@@ -475,6 +475,12 @@ header{display:flex;align-items:center;gap:10px;padding:6px 0 16px}
 
 /* Phones: brand and buttons on the first row, TV chip or tabs on their own row */
 @media (max-width:640px){
+  body,html{overflow-x:hidden}
+  .icon-btn{width:44px;height:44px}
+  .about{flex-direction:column;gap:10px}
+  .about img{width:100%;height:180px;object-fit:contain}
+  .themes{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
+  .scrim{align-items:flex-end;padding:0}
   header{flex-wrap:wrap;gap:8px;padding-bottom:12px}
   header .spacer{display:none}
   .brand{margin-right:auto}
@@ -494,7 +500,21 @@ html[data-phone] .tvtabs button{flex:1;justify-content:center}
 html[data-phone] .card{padding:14px;border-radius:16px}
 html[data-phone] .tile{min-height:88px}
 html[data-phone] body{padding-bottom:max(40px,env(safe-area-inset-bottom))}
+html[data-phone] .icon-btn{width:44px;height:44px}
+html[data-phone] .chip{padding:10px 14px}
+html[data-phone] #sleepOpts button{padding:10px 14px}
+html[data-phone] .about{flex-direction:column;gap:10px}
+html[data-phone] .about img{width:100%;height:180px;object-fit:contain}
+html[data-phone] .sheet .btn.sm{padding:10px 14px}
+html[data-phone] .facts li{padding:12px 14px}
+html[data-phone] .themes{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
 html[data-phone] .scrim{align-items:flex-end;padding:0}
+/* Tilting themes must not push the page sideways on a phone */
+html[data-phone] body,html[data-phone]{overflow-x:hidden}
+html[data-phone][data-theme="chaos"] .card{animation-name:chaosWobbleSmall}
+html[data-phone][data-theme="ransom"] .card,html[data-phone][data-theme="ransom"] .grid>div>.card:nth-child(2),html[data-phone][data-theme="ransom"] .grid>div>.card:nth-child(3){transform:rotate(-.35deg)}
+html[data-phone][data-theme="ransom"] .dpad{transform:rotate(.6deg)}
+@keyframes chaosWobbleSmall{0%{transform:rotate(-.5deg) translate(0,0)}25%{transform:rotate(.4deg) translate(1px,-2px)}50%{transform:rotate(-.2deg) translate(-2px,1px)}75%{transform:rotate(.6deg) translate(1px,2px)}100%{transform:rotate(-.5deg) translate(0,0)}}
 html[data-phone] .sheet{border-radius:22px 22px 0 0}
 /* Grid */
 .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
@@ -593,10 +613,11 @@ html[data-phone] .grid{grid-template-columns:1fr}
 /* Sheets */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0}
 @media (min-width:600px){.scrim{align-items:center;padding:20px}}
-.sheet{background:var(--surface);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));box-shadow:var(--shadow)}
+.sheet{background:var(--surface);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:var(--sheet-max,92dvh);overflow:auto;padding:0 18px max(18px,var(--safe-bottom-z,env(safe-area-inset-bottom)));box-shadow:var(--shadow);overscroll-behavior:contain}
+.sheet>div:first-child>.top{position:sticky;top:0;z-index:3;background:var(--surface);padding:18px 0 10px;margin-bottom:6px}
 @media (min-width:600px){.sheet{border-radius:22px}}
 .sheet h3{margin:0 0 4px;font-size:18px}
-.sheet .top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sheet .top{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-top:18px}
 .sheet .top .spacer{flex:1}
 .sheet p{margin:6px 0 12px;color:var(--muted);font-size:14px}
 .dev{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--surface2);margin-bottom:10px}
@@ -611,7 +632,7 @@ html[data-phone] .grid{grid-template-columns:1fr}
 .tabs{display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:12px;margin-bottom:12px}
 .tabs button{flex:1;padding:8px;border-radius:9px;font-weight:600;font-size:13px;color:var(--muted)}
 .tabs button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.list{display:flex;flex-direction:column;gap:6px;max-height:48dvh;overflow:auto}
+.list{display:flex;flex-direction:column;gap:6px;max-height:var(--list-max,48dvh);overflow:auto}
 .item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);text-align:left;width:100%}
 .item:hover{background:var(--surface3)}
 .item .ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--surface);border:1px solid var(--border);flex:none;color:var(--text);font-weight:700}
@@ -638,7 +659,7 @@ html[data-phone] .grid{grid-template-columns:1fr}
 textarea.code{font:12px/1.4 ui-monospace,Menlo,monospace;min-height:120px;resize:vertical}
 
 /* Toast */
-#toasts{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:100;pointer-events:none;width:min(92vw,420px)}
+#toasts{position:fixed;left:50%;bottom:max(20px,var(--safe-bottom-z,env(safe-area-inset-bottom)));transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:100;pointer-events:none;width:min(92vw,420px)}
 .toast{background:var(--surface3);color:var(--text);border:1px solid var(--border2);padding:10px 14px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);animation:pop .18s ease-out}
 .toast.err{border-color:var(--danger);color:var(--danger)}
 .toast.ok{border-color:rgba(61,214,140,.4)}
@@ -912,8 +933,18 @@ function fitPhone() {
   if (!probe) { probe = document.createElement('div'); probe.id = 'safeProbe'; probe.style.cssText = 'position:fixed;top:0;left:0;height:env(safe-area-inset-top);width:1px;visibility:hidden;pointer-events:none'; document.body.appendChild(probe); }
   const inset = probe.getBoundingClientRect().height;
   const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
-  const top = Math.max(12, inset * (ratio > 1.08 ? ratio : 1) + (standalone ? 6 : 0));
+  const z = ratio > 1.08 ? ratio : 1;
+  const top = Math.max(12, inset * z + (standalone ? 6 : 0));
   document.body.style.paddingTop = top + 'px';
+  // Values for elements that live inside a zoomed container (sheets, toasts, theme overlays):
+  // divide by the zoom so they land in the right place on the glass.
+  let bprobe = $('#safeProbeB');
+  if (!bprobe) { bprobe = document.createElement('div'); bprobe.id = 'safeProbeB'; bprobe.style.cssText = 'position:fixed;top:0;left:0;height:env(safe-area-inset-bottom);width:1px;visibility:hidden;pointer-events:none'; document.body.appendChild(bprobe); }
+  const insetB = bprobe.getBoundingClientRect().height;
+  html.style.setProperty('--safe-top-z', (inset / z + (standalone ? 4 : 0)).toFixed(1) + 'px');
+  html.style.setProperty('--safe-bottom-z', Math.max(12, insetB / z).toFixed(1) + 'px');
+  html.style.setProperty('--sheet-max', Math.round(innerHeight / z * 0.9) + 'px');
+  html.style.setProperty('--list-max', Math.round(innerHeight / z * 0.45) + 'px');
 }
 fitPhone();
 window.addEventListener('resize', fitPhone);

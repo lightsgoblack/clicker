@@ -1052,9 +1052,14 @@ function renderStatus(st) {
     else $('#npBar').hidden = true;
     art.classList.toggle('live', p.state === 'playing');
   } else if (S.connected) {
-    $('#npTitle').textContent = st.app && st.app.name ? st.app.name : (st.power === 'off' ? 'Asleep' : 'Idle');
-    $('#npSub').textContent = st.power === 'off' ? 'Press power to wake it up.' : (p && p.state ? p.state[0].toUpperCase() + p.state.slice(1) : 'Nothing playing right now.');
-    $('#npBar').hidden = true; art.classList.remove('live');
+    const app = st.app && st.app.name;
+    const active = p && (p.state === 'playing' || p.state === 'paused');
+    $('#npTitle').textContent = app || (st.power === 'off' ? 'Asleep' : 'Idle');
+    if (st.power === 'off') $('#npSub').textContent = 'Press power to wake it up.';
+    else if (active && app) $('#npSub').textContent = (p.state === 'playing' ? 'Playing' : 'Paused') + ' \u00b7 ' + app + " does not share what's on";
+    else if (p && p.state) $('#npSub').textContent = p.state[0].toUpperCase() + p.state.slice(1);
+    else $('#npSub').textContent = 'Nothing playing right now.';
+    $('#npBar').hidden = true; art.classList.toggle('live', !!(p && p.state === 'playing'));
   } else {
     $('#npTitle').textContent = 'Nothing playing'; $('#npSub').textContent = 'Connect to an Apple TV to see what is on.'; $('#npBar').hidden = true; art.classList.remove('live');
   }

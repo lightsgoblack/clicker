@@ -46,7 +46,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -150,9 +150,11 @@ class State:
         d = self.stats.setdefault(day, {"apps": {}, "titles": {}})
         app_name = (getattr(app, "name", None) if app else None) or "Unknown"
         d["apps"][app_name] = d["apps"].get(app_name, 0) + seconds
-        label = (p.get("series") or p.get("artist") or p.get("title") or "Unknown")
-        key = f"{app_name}|{label}"
-        d["titles"][key] = d["titles"].get(key, 0) + seconds
+        # Apps that hide their metadata (Netflix) still count toward the app total,
+        # but there is no title to bucket them under.
+        label = p.get("series") or p.get("artist") or p.get("title")
+        if label:
+            d["titles"][f"{app_name}|{label}"] = d["titles"].get(f"{app_name}|{label}", 0) + seconds
         if time.time() - self._stats_saved > 60:
             self._stats_saved = time.time()
             try:

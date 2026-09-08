@@ -46,7 +46,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.8.0"
+VERSION = "1.8.1"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -493,7 +493,9 @@ class State:
                 "mediaType": playing.media_type.name.lower(),
                 "contentId": getattr(playing, "content_identifier", None),
             }
-            self.note_app_metadata(getattr(getattr(self.atv.metadata, "app", None), "identifier", None), bool(playing.title))
+            # Only judge an app while it is actually playing; an idle app has nothing to report.
+            if out["playing"]["state"] in ("playing", "paused"):
+                self.note_app_metadata(getattr(getattr(self.atv.metadata, "app", None), "identifier", None), bool(playing.title))
         except Exception as e:  # metadata is best-effort
             out["playing"] = None
             out["playingError"] = str(e)

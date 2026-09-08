@@ -577,6 +577,7 @@ html[data-phone] .grid{grid-template-columns:1fr}
 .ico.brand{border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 3px 8px rgba(0,0,0,.28);position:relative;overflow:hidden}
 .ico.brand:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 55%);pointer-events:none}
 .ico.brand svg{width:66%;height:66%;position:relative}
+.ico.brand svg text{letter-spacing:normal!important;text-transform:none!important;font-style:normal!important}
 .tile .ico{width:56px;height:56px;border-radius:15px}
 .tile .ico.brand svg{width:64%;height:64%}
 .tile:hover .ico.brand{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 6px 14px rgba(0,0,0,.35)}
@@ -758,7 +759,7 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
     <div style="display:flex;flex-direction:column;gap:18px">
       <!-- NOW PLAYING -->
       <section class="card">
-        <h2>Now playing <span class="spacer"></span><button id="aboutBtn" hidden>About ↗</button></h2>
+        <h2>Now playing <span class="spacer"></span><button id="tagBtn" hidden>What's on?</button><button id="aboutBtn" hidden>About ↗</button></h2>
         <div class="np" id="npCard" title="About what is playing" style="cursor:pointer">
           <div class="art" id="npArt"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg></div>
           <div class="meta">
@@ -1030,6 +1031,7 @@ function playingCtx(st) {
 function renderStatus(st) {
   S.status = st; S.connected = !!st.connected;
   $('#aboutBtn').hidden = !playingCtx(st);
+  $('#tagBtn').hidden = !(S.connected && st.appHidesMeta && st.playing && ['playing', 'paused'].includes(st.playing.state) && !st.tagged);
   renderUpdate(st);
   if (activeFx && activeFx.apply) activeFx.apply(st);
   renderSleep(st); loadHistory(); renderKid(st); loadTabs();
@@ -1047,6 +1049,7 @@ function renderStatus(st) {
     if (p.artist) bits.push(p.artist);
     if (st.app && st.app.name) bits.push(st.app.name);
     bits.push(p.state === 'playing' ? 'Playing' : p.state === 'paused' ? 'Paused' : p.state);
+    if (p.titleSource) bits.push(p.titleSource === 'launch' ? 'from the tile you tapped' : 'you told me');
     $('#npSub').textContent = bits.join(' · ');
     if (p.total) { $('#npBar').hidden = false; $('#npFill').style.width = Math.min(100, (p.position || 0) / p.total * 100) + '%'; $('#npSub').textContent += ' · ' + fmt(p.position) + ' / ' + fmt(p.total); }
     else $('#npBar').hidden = true;
@@ -1056,7 +1059,7 @@ function renderStatus(st) {
     const active = p && (p.state === 'playing' || p.state === 'paused');
     $('#npTitle').textContent = app || (st.power === 'off' ? 'Asleep' : 'Idle');
     if (st.power === 'off') $('#npSub').textContent = 'Press power to wake it up.';
-    else if (active && app) $('#npSub').textContent = (p.state === 'playing' ? 'Playing' : 'Paused') + ' \u00b7 ' + app + " does not share what's on";
+    else if (active && app) $('#npSub').textContent = (p.state === 'playing' ? 'Playing' : 'Paused') + ' \u00b7 ' + app + " does not share what's on. Tap \u201cWhat\u2019s on?\u201d to fill it in.";
     else if (p && p.state) $('#npSub').textContent = p.state[0].toUpperCase() + p.state.slice(1);
     else $('#npSub').textContent = 'Nothing playing right now.';
     $('#npBar').hidden = true; art.classList.toggle('live', !!(p && p.state === 'playing'));
@@ -1078,7 +1081,7 @@ const G = (a, b) => `linear-gradient(160deg, ${a} 0%, ${b} 100%)`;
 const SV = (inner, extra = '') => `<svg viewBox="0 0 48 48" ${extra}>${inner}</svg>`;
 const TXT = (t, size = 16, weight = 800, fill = '#fff', extra = '', x = 24, y = 24) => `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-family="-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="${fill}" ${extra}>${t}</text>`;
 const ICONS = {
-  appletv:  { bg: G('#3a3a3c', '#0a0a0a'), svg: SV(`<g transform="translate(-11 0) scale(1.1)"><path d="M17.5 17.2c1.2-1.6 3.2-2.2 4.9-2.2 1.3 0 2.3.6 3.3.6s2.2-.7 3.7-.6c1.7.1 3.1.8 4 2.1-3.6 2.2-3 7.4.7 8.9-.7 2-1.6 3.8-2.8 5.2-1 1.1-1.9 2-3.2 2-1.4 0-1.8-.8-3.4-.8s-2 .8-3.4.8c-1.3 0-2.4-1.1-3.4-2.3-2.8-3.6-3.4-9.4-.4-13.7z" fill="#fff"/><path d="M25.5 13.6c-.4-2 1-4.1 2.8-4.8.5 2.2-1 4.4-2.8 4.8z" fill="#fff"/></g>` + TXT('tv', 17, 700, '#fff', '', 35.5, 25.5)) },
+  appletv:  { bg: G('#3a3a3c', '#0a0a0a'), svg: SV(`<g transform="translate(-1.5 0) scale(1.12)"><path d="M17.5 17.2c1.2-1.6 3.2-2.2 4.9-2.2 1.3 0 2.3.6 3.3.6s2.2-.7 3.7-.6c1.7.1 3.1.8 4 2.1-3.6 2.2-3 7.4.7 8.9-.7 2-1.6 3.8-2.8 5.2-1 1.1-1.9 2-3.2 2-1.4 0-1.8-.8-3.4-.8s-2 .8-3.4.8c-1.3 0-2.4-1.1-3.4-2.3-2.8-3.6-3.4-9.4-.4-13.7z" fill="#fff"/><path d="M25.5 13.6c-.4-2 1-4.1 2.8-4.8.5 2.2-1 4.4-2.8 4.8z" fill="#fff"/></g>`) },
   netflix:  { bg: G('#e50914', '#8f0610'), svg: SV(`<path d="M15 8h6.5l6 18V8H34v32c-2.3-.5-4.4-.7-6.5-.8L21.5 22v17.4c-2.2.2-4.3.4-6.5.7z" fill="#fff"/>`) },
   youtube:  { bg: G('#ff2a2a', '#c40000'), svg: SV(`<rect x="7" y="13" width="34" height="22" rx="7" fill="#fff"/><path d="M20.5 18.5v11l9-5.5z" fill="#e00"/>`) },
   youtubetv:{ bg: G('#ff2a2a', '#c40000'), svg: SV(`<rect x="7" y="9" width="34" height="20" rx="6" fill="#fff"/><path d="M21 13.5v11l8.5-5.5z" fill="#e00"/>` + TXT('TV', 11, 800, '#fff', '', 24, 37)) },
@@ -1215,7 +1218,7 @@ $('#editBtn').onclick = () => setEditing(!S.editing);
 const wait = ms => new Promise(r => setTimeout(r, ms));
 async function runFav(f) {
   try {
-    if (f.kind === 'app' || f.kind === 'link') { await api('launch', { target: f.value }); toast('Opening ' + f.label); }
+    if (f.kind === 'app' || f.kind === 'link') { await api('launch', { target: f.value, label: f.label }); toast('Opening ' + f.label); }
     else if (f.kind === 'text') { await api('text', { text: f.value }); toast('Typed'); }
     else if (f.kind === 'cmd') { await api('cmd', { name: f.value }); }
     else if (f.kind === 'seq') { await runSeq(f.value); toast(f.label + ' done'); }
@@ -1447,6 +1450,19 @@ setInterval(() => { if (!document.hidden) loadHistory(); }, 20000);
 
 // ---------- Find on TV ----------
 $('#findForm').onsubmit = async e => { e.preventDefault(); const q = $('#findInput').value.trim(); if (!q) return; const btn = e.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Finding…'; try { await api('search', { q }); toast('Searching the TV for "' + q + '"', 'ok'); $('#findInput').value = ''; } catch (err) { toast(err.message, 'err'); } btn.disabled = false; btn.textContent = 'Find'; };
+
+// ---------- "What's on?" for apps that hide their metadata ----------
+function openTag() {
+  const app = (S.status && S.status.app && S.status.app.name) || 'This app';
+  const node = sheetTop("What's on?", `${app} does not tell the Apple TV what is playing, so nothing on your network can see it. Type it here and Clicker will use it for About, Continue watching, and stats until the app changes.`);
+  const f = document.createElement('form'); f.className = 'type';
+  f.innerHTML = '<input placeholder="Show or film, e.g. Stranger Things" autocomplete="off" autofocus><button class="btn primary" type="submit">Set</button>';
+  node.appendChild(f); openSheet(node);
+  const inp = f.querySelector('input'); setTimeout(() => inp.focus(), 100);
+  f.onsubmit = async e => { e.preventDefault(); const v = inp.value.trim(); if (!v) return;
+    try { await api('nowtag', { title: v }); closeSheet(); toast('Got it: ' + v, 'ok'); refresh(); } catch (err) { toast(err.message, 'err'); } };
+}
+$('#tagBtn').onclick = openTag;
 
 // ---------- Kid mode ----------
 function renderKid(st) { const on = !!(st && st.kidMode); html.toggleAttribute('data-kid', on); $('#kidChip').hidden = !on; if (on && S.sheet && !S.sheet.dataset.kid) closeSheet(); if (on && S.editing) setEditing(false); }

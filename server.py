@@ -46,7 +46,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.7.1"
+VERSION = "1.8.0"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -135,12 +135,43 @@ class State:
             self.history = []
         self.sleep_at = None
         self.sleep_task = None
+        self.tag = None          # {"app","title","series","source"} for apps that hide their metadata
+        self.pending_tag = None  # set by a deep-link launch, adopted once the TV reports the new app
         self.stats_path = DATA_DIR / "stats.json"
         try:
             self.stats = json.loads(self.stats_path.read_text())
         except Exception:
             self.stats = {}
         self._stats_saved = 0
+
+    # ---- apps that hide their metadata ----
+    def note_app_metadata(self, app_id, has_title):
+        """Learn, from real use, which apps report what is playing and which do not."""
+        if not app_id:
+            return
+        seen = self.prefs.setdefault("app_meta", {})
+        prev = seen.get(app_id)
+        if has_title:
+            new = "reports"
+        elif prev == "reports":
+            return  # one silent moment (a menu screen) does not undo a known-good app
+        else:
+            new = "hides"
+        if prev != new:
+            seen[app_id] = new
+            self.save_prefs()
+
+    def apply_tag(self, out):
+        """Fill in a title the user told us, or one implied by a link they launched."""
+        p, app = out.get("playing"), out.get("app") or {}
+        if not p or p.get("title") or p.get("state") not in ("playing", "paused"):
+            return
+        t = self.tag
+        if not t or t.get("app") != app.get("identifier"):
+            return
+        p["title"] = t.get("title")
+        p["series"] = t.get("series") or None
+        p["titleSource"] = t.get("source", "manual")
 
     # ---- watch stats (local only) ----
     def record_stats(self, p, app, seconds):
@@ -232,6 +263,18 @@ class State:
         if app == "com.apple.TVWatchList" and cid.startswith("umc."):
             return f"https://tv.apple.com/show/{cid}"
         return app or None
+
+    def set_tag(self, title, series=None, source="manual"):
+        app = None
+        try:
+            app = getattr(self.atv.metadata.app, "identifier", None)
+        except Exception:
+            pass
+        if not title:
+            self.tag = None
+            return None
+        self.tag = {"app": app, "title": title.strip(), "series": (series or "").strip() or None, "source": source}
+        return self.tag
 
     # ---- sleep timer ----
     async def sleep_set(self, minutes):
@@ -450,7 +493,7 @@ class State:
                 "mediaType": playing.media_type.name.lower(),
                 "contentId": getattr(playing, "content_identifier", None),
             }
-            self.record_history(out["playing"], getattr(self.atv.metadata, "app", None))
+            self.note_app_metadata(getattr(getattr(self.atv.metadata, "app", None), "identifier", None), bool(playing.title))
         except Exception as e:  # metadata is best-effort
             out["playing"] = None
             out["playingError"] = str(e)
@@ -463,6 +506,17 @@ class State:
             out["power"] = self.atv.power.power_state.name.lower()
         except Exception:
             out["power"] = None
+        if self.pending_tag:
+            app_id = (out.get("app") or {}).get("identifier")
+            if app_id:
+                self.set_tag(self.pending_tag["title"], source=self.pending_tag["source"])
+                self.pending_tag = None
+        self.apply_tag(out)
+        if out.get("playing"):
+            self.record_history(out["playing"], self.atv.metadata.app if hasattr(self.atv.metadata, "app") else None)
+        app_id = (out.get("app") or {}).get("identifier")
+        out["appHidesMeta"] = self.prefs.get("app_meta", {}).get(app_id) == "hides" if app_id else False
+        out["tagged"] = bool(self.tag and self.tag.get("app") == app_id)
         out["sleepAt"] = self.sleep_at
         out["kidMode"] = bool(self.prefs.get("kid_mode"))
         return out
@@ -1142,11 +1196,24 @@ def routes(state: State):
             return json_error("Nothing to launch.")
         try:
             await atv.apps.launch_app(target)
+            # A deep link tells us what they opened, which apps like Netflix never report.
+            label = (body.get("label") or "").strip()
+            if label and target.startswith(("http://", "https://")):
+                await asyncio.sleep(0)
+                state.pending_tag = {"title": label, "source": "launch"}
+            elif label:
+                state.pending_tag = None
         except exceptions.NotSupportedError:
             return json_error("Launching apps needs Companion pairing.", 501)
         except Exception as e:
             return json_error(f"Launch failed: {e}", 500)
         return web.json_response({"ok": True})
+
+    @r.post("/api/nowtag")
+    async def nowtag(req):
+        body = await req.json()
+        t = state.set_tag(body.get("title"), body.get("series"), body.get("source") or "manual")
+        return web.json_response({"ok": True, "tag": t})
 
     @r.post("/api/text")
     async def text(req):

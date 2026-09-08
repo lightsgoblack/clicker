@@ -484,11 +484,24 @@ header{display:flex;align-items:center;gap:10px;padding:6px 0 16px}
   .tile{min-height:88px}
   body{padding-bottom:max(40px,env(safe-area-inset-bottom))}
 }
+/* Same rules keyed off a JS attribute, for phones whose layout viewport lies (desktop-site mode, baked-in page zoom) */
+html[data-phone] header{flex-wrap:wrap;gap:8px;padding-bottom:12px}
+html[data-phone] header .spacer{display:none}
+html[data-phone] .brand{margin-right:auto}
+html[data-phone] .brand .full{display:none} html[data-phone] .brand .short{display:inline}
+html[data-phone] #devChip,html[data-phone] #tvTabs,html[data-phone] #kidChip{order:20;flex:1 1 100%;max-width:none;justify-content:center}
+html[data-phone] .tvtabs button{flex:1;justify-content:center}
+html[data-phone] .card{padding:14px;border-radius:16px}
+html[data-phone] .tile{min-height:88px}
+html[data-phone] body{padding-bottom:max(40px,env(safe-area-inset-bottom))}
+html[data-phone] .scrim{align-items:flex-end;padding:0}
+html[data-phone] .sheet{border-radius:22px 22px 0 0}
 /* Grid */
 .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
 .grid>*{min-width:0}
 .card{min-width:0}
 @media (max-width:760px){.grid{grid-template-columns:1fr}}
+html[data-phone] .grid{grid-template-columns:1fr}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
 .card h2{margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
 .card h2 .spacer{flex:1}
@@ -881,6 +894,23 @@ $('#themeBtn').onclick = openThemes;
 function setLayout(l) { html.setAttribute('data-layout', l); store.set('layout', l); $('#layoutBtn').textContent = l === 'classic' ? 'Grid layout' : 'Classic layout'; }
 setLayout(html.getAttribute('data-layout'));
 $('#layoutBtn').onclick = () => setLayout(html.getAttribute('data-layout') === 'classic' ? 'grid' : 'classic');
+
+// ---------- phone fit ----------
+// On a touch device the layout viewport can be far wider than the glass (Safari "desktop site",
+// or a page-zoom level iOS bakes into Home Screen apps). Measure the real screen and scale to it.
+function fitPhone() {
+  const touch = navigator.maxTouchPoints > 1 || /iPhone|iPad|Android/i.test(navigator.userAgent);
+  const glass = Math.min(screen.width, screen.height);
+  if (!touch || glass >= 768) { html.removeAttribute('data-phone'); [ $('.wrap'), $('#sheetRoot'), $('#toasts') ].forEach(e => e && (e.style.zoom = '')); return; }
+  html.setAttribute('data-phone', '');
+  const target = Math.min(screen.width, innerWidth);            // the width we actually have to draw into
+  const ratio = innerWidth / target;
+  [ $('.wrap'), $('#sheetRoot'), $('#toasts') ].forEach(e => { if (!e) return; e.style.zoom = ratio > 1.08 ? ratio.toFixed(3) : ''; });
+}
+fitPhone();
+window.addEventListener('resize', fitPhone);
+if (window.visualViewport) visualViewport.addEventListener('resize', fitPhone);
+window.addEventListener('orientationchange', () => setTimeout(fitPhone, 300));
 
 // ---------- state ----------
 const S = { connected: false, status: null, power: null, editing: false, sheet: null };

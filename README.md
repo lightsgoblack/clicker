@@ -1,8 +1,10 @@
-# Colin's Cool Couch Clicker
+# Colin's Cool Crazy Couch Computer Clicker
 
-Colossally convenient couch control, courtesy of Colin. A free, local web remote for Apple TV that runs on your Mac. Open it in a browser tab (or on your phone over Wi-Fi), pair once with the PIN on the TV, and you have navigation, playback, volume, power, typing, and a customizable grid of favorites that launch apps or jump straight to a show.
+Colossally convenient couch control, courtesy of Colin. A free remote for **Apple TV and Roku** that runs on your Mac and opens on your phone. Navigation, playback, volume, power, typing, sleep timer, continue-watching, and a customizable grid of favorites that launch apps or jump straight to a show.
 
-Nothing leaves your network except a once-a-day check for updates (a single request to GitHub, can be turned off) and the optional "About what's playing" lookups (see below). There are no accounts, no subscriptions, and no telemetry. Pairing credentials are stored in `~/Library/Application Support/Clicker/`.
+**[Setup guide for Mac and iPhone](https://lightsgoblack.github.io/clicker/)** — anyone can open it, no account needed (source: `docs/setup-guide.html`).
+
+Roku needs no pairing at all. Apple TV pairs once with a PIN from the screen. Nothing leaves your network except a once-a-day check for updates (a single request to GitHub, can be turned off) and the optional "About what's playing" lookups (see below). There are no accounts, no subscriptions, and no telemetry. Pairing credentials are stored in `~/Library/Application Support/Clicker/`.
 
 ## Start it
 

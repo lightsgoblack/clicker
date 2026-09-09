@@ -69,6 +69,14 @@ Either way, Clicker then runs quietly in the background and opens the remote in 
 
 Drag `Clicker` from Applications onto the Dock. Clicking it starts the server if needed and opens the remote. For a proper windowed app with no browser chrome, open the remote in Safari and choose **File, Add to Dock**; that creates a "Clicker" web app you can launch from the Dock too.
 
+## Roku
+
+Rokus need no pairing at all. Open the device picker, and any Roku on your network appears next to your Apple TVs; tap Connect and the remote, favorites, sleep timer, search, and themes all work the same way.
+
+One TV setting matters. If buttons do nothing, the Roku is in its restricted mode. On the TV: **Settings, System, Advanced system settings, Control by mobile apps, Network access, Permissive**. Clicker detects this and shows those steps in a banner rather than failing silently.
+
+Roku differences worth knowing: there is no screensaver or stop button, "Back" stands in for Menu, and Search uses Roku's own search screen. Roku deep links look like `roku://12?contentId=xyz` (12 is the channel id, from the "On this TV" list).
+
 ## On your phone
 
 1. Turn on **Party mode** (QR button in the header) on the Mac.

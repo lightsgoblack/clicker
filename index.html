@@ -208,11 +208,11 @@ html[data-theme="terminal"] .tile .lbl{text-transform:lowercase} html[data-theme
 }
 @keyframes vhsTrack{0%{top:-12%}100%{top:112%}}
 @keyframes vhsShake{0%,96%,100%{transform:translate(0,0)}97%{transform:translate(-3px,1px)}98%{transform:translate(4px,-2px)}99%{transform:translate(-2px,0)}}
-html[data-theme="vhs"] body{filter:saturate(1.15) contrast(1.05);animation:vhsShake 7s infinite}
+html[data-theme="vhs"] .wrap{filter:saturate(1.15) contrast(1.05);animation:vhsShake 7s infinite}
 html[data-theme="vhs"] body::before{content:"";position:fixed;inset:0;z-index:5;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
 html[data-theme="vhs"] body::after{content:"";position:fixed;left:0;right:0;height:9%;z-index:6;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(255,255,255,.14) 40%,rgba(0,0,0,.25) 60%,transparent);filter:blur(2px);animation:vhsTrack 9s linear infinite;mix-blend-mode:screen}
-html[data-theme="vhs"] .wrap::before{content:"▶ PLAY   SP 0:00:00";position:fixed;left:24px;top:calc(var(--safe-top-z,0px) + 12px);z-index:7;font-family:"VT323","Courier New",monospace;font-size:20px;letter-spacing:.08em;color:#fff;text-shadow:2px 0 #f0f,-2px 0 #0ff}
-html[data-theme="vhs"] .wrap::after{content:"● REC";position:fixed;right:24px;top:calc(var(--safe-top-z,0px) + 12px);z-index:7;font-family:"Courier New",monospace;font-weight:700;color:#ff3b3b;animation:blink 1.4s steps(2) infinite}
+html[data-theme="vhs"] #fx::before{content:"▶ PLAY   SP 0:00:00";position:fixed;left:24px;top:calc(var(--safe-top-z,0px) + 12px);z-index:7;font-family:"VT323","Courier New",monospace;font-size:20px;letter-spacing:.08em;color:#fff;text-shadow:2px 0 #f0f,-2px 0 #0ff}
+html[data-theme="vhs"] #fx::after{content:"● REC";position:fixed;right:24px;top:calc(var(--safe-top-z,0px) + 12px);z-index:7;font-family:"Courier New",monospace;font-weight:700;color:#ff3b3b;animation:blink 1.4s steps(2) infinite}
 html[data-theme="vhs"] header{margin-top:26px}
 html[data-theme="vhs"] .brand,html[data-theme="vhs"] .np .title,html[data-theme="vhs"] .card h2{text-shadow:1.5px 0 rgba(255,0,255,.55),-1.5px 0 rgba(0,255,255,.55)}
 html[data-theme="vhs"] .card{border-radius:6px;box-shadow:inset 0 0 40px rgba(0,0,0,.35)}
@@ -421,6 +421,7 @@ html[data-theme="owens"] footer{font-style:italic}
 html[data-kid] .tvtabs .more,html[data-kid] #editBtn,html[data-kid] #settingsBtn,html[data-kid] #partyBtn,html[data-kid] #themeBtn,html[data-kid] #devChip,html[data-kid] #favEditToggle,html[data-kid] #aboutBtn,html[data-kid] .type,html[data-kid] .type + .hint,html[data-kid] #findForm,html[data-kid] #findForm + .hint,html[data-kid] .sleep,html[data-kid] .cwt .x,html[data-kid] .tile.add,html[data-kid] #layoutBtn,html[data-kid] footer kbd,html[data-kid] [data-cmd="power"],html[data-kid] #updBanner{display:none!important}
 html[data-kid] #kidChip{background:var(--accent-soft);border-color:var(--accent);color:var(--text)}
 html[data-kid] #npCard{cursor:default}
+#fx{position:fixed;inset:0;z-index:7;pointer-events:none}
 /* Sleep timer */
 .sleep{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);width:100%;flex-wrap:wrap}
 .sleep-l{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
@@ -512,10 +513,22 @@ html[data-phone] .scrim{align-items:flex-end;padding:0}
 /* Tilting themes must not push the page sideways on a phone */
 html[data-phone] body,html[data-phone]{overflow-x:hidden}
 html[data-phone][data-theme="chaos"] .card{animation-name:chaosWobbleSmall}
+html[data-phone][data-theme="chaos"] .sheet,html[data-phone][data-theme="owens"] .sheet{animation:none}
 html[data-phone][data-theme="ransom"] .card,html[data-phone][data-theme="ransom"] .grid>div>.card:nth-child(2),html[data-phone][data-theme="ransom"] .grid>div>.card:nth-child(3){transform:rotate(-.35deg)}
 html[data-phone][data-theme="ransom"] .dpad{transform:rotate(.6deg)}
 @keyframes chaosWobbleSmall{0%{transform:rotate(-.5deg) translate(0,0)}25%{transform:rotate(.4deg) translate(1px,-2px)}50%{transform:rotate(-.2deg) translate(-2px,1px)}75%{transform:rotate(.6deg) translate(1px,2px)}100%{transform:rotate(-.5deg) translate(0,0)}}
-html[data-phone] .sheet{border-radius:22px 22px 0 0}
+html[data-phone] .sheet{border-radius:22px 22px 0 0;max-height:88dvh;padding-bottom:max(28px,env(safe-area-inset-bottom))}
+/* Close must stay reachable however far a sheet is scrolled */
+.sheet .top{position:sticky;top:-18px;z-index:2;background:var(--surface);padding:14px 0 10px;margin:-18px 0 8px}
+.sheet .top [data-close]{min-width:76px;min-height:40px}
+html[data-phone] .sheet::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--border2);margin:-4px auto 6px;opacity:.7}
+html[data-phone] .iconpick{max-height:180px}
+html[data-phone] .list{max-height:50dvh}
+/* Fixed theme decorations must clear the status bar and Dynamic Island */
+html[data-theme="vhs"] #fx::before,html[data-theme="vhs"] #fx::after{top:calc(var(--safe-top, env(safe-area-inset-top)) + 8px)}
+html[data-phone][data-theme="vhs"] #fx::before{left:10px;font-size:15px}
+html[data-phone][data-theme="vhs"] #fx::after{right:10px;font-size:13px}
+html[data-phone][data-theme="vhs"] header{margin-top:30px}
 /* Grid */
 .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
 .grid>*{min-width:0}
@@ -803,6 +816,7 @@ footer{color:var(--faint);font-size:12px;text-align:center;padding:26px 0 0}
   <footer>Colossally convenient couch control, courtesy of Colin. Runs on this Mac, talks to the Apple TV over your Wi-Fi, nothing leaves your network. Press <kbd>?</kbd> for keyboard shortcuts.</footer>
 </div>
 
+<div id="fx" aria-hidden="true"></div>
 <div id="sheetRoot"></div>
 <div id="toasts"></div>
 
@@ -937,6 +951,7 @@ function fitPhone() {
   const z = ratio > 1.08 ? ratio : 1;
   const top = Math.max(12, inset * z + (standalone ? 6 : 0));
   document.body.style.paddingTop = top + 'px';
+  html.style.setProperty('--safe-top', top + 'px');
   // Values for elements that live inside a zoomed container (sheets, toasts, theme overlays):
   // divide by the zoom so they land in the right place on the glass.
   let bprobe = $('#safeProbeB');
@@ -1038,7 +1053,12 @@ function renderStatus(st) {
   if (activeFx === FX.ransom) ransomize(true);
   const chip = $('#devChip'); chip.classList.toggle('on', S.connected);
   $('#devName').textContent = S.connected ? st.device.name : 'Not connected';
-  $('#banner').hidden = S.connected;
+  if (S.connected && st.blocked) {
+    $('#banner').hidden = false; $('#bannerText').textContent = st.blocked; $('#bannerBtn').textContent = 'Devices';
+  } else {
+    $('#banner').hidden = S.connected;
+    if (!S.connected) $('#bannerBtn').textContent = 'Choose device';
+  }
   const p = st.playing;
   const art = $('#npArt');
   if (S.connected && p && p.title) {
@@ -1280,6 +1300,7 @@ async function openDevices() {
 }
 function deviceRow(d) {
   const row = document.createElement('div'); row.className = 'dev';
+  if (d.kind === 'roku') return rokuRow(d, row);
   const airplay = d.services.find(s => s.protocol === 'airplay'), companion = d.services.find(s => s.protocol === 'companion');
   const isCur = S.connected && S.status.device && S.status.device.identifier === d.identifier;
   row.innerHTML = `<div class="name"><span></span><small></small>${isCur ? '<span class="badge ok">Connected</span>' : ''}</div><div class="badges"></div><div class="acts"></div><div class="pinbox"></div>`;
@@ -1297,6 +1318,19 @@ function deviceRow(d) {
   if (anyPaired) btn('Forget', 'danger', async () => { if (!confirm(`Forget pairing with "${d.name}"? You will need the PIN again.`)) return; try { await api('forget', { identifier: d.identifier }); toast('Forgotten'); refresh(); openDevices(); } catch (e) { toast(e.message, 'err'); } });
   return row;
 }
+function rokuRow(d, row) {
+  const isCur = S.connected && S.status.device && S.status.device.identifier === d.identifier;
+  row.innerHTML = `<div class="name"><span></span><small></small>${isCur ? '<span class="badge ok">Connected</span>' : ''}</div><div class="badges"><span class="badge ok">Roku &middot; no pairing needed</span></div><div class="acts"></div>`;
+  row.querySelector('.name span').textContent = d.name;
+  row.querySelector('.name small').textContent = `${d.model} \u00b7 ${d.address}`;
+  const acts = row.querySelector('.acts');
+  if (!isCur) { const b = document.createElement('button'); b.className = 'btn sm primary'; b.textContent = 'Connect'; b.onclick = () => connect(d); acts.appendChild(b); }
+  const h = document.createElement('div'); h.className = 'hint';
+  h.textContent = 'If buttons do nothing, the TV is blocking apps. On the Roku: Settings, System, Advanced system settings, Control by mobile apps, Network access, choose Permissive.';
+  row.appendChild(h);
+  return row;
+}
+
 async function startPair(d, protocol, row) {
   const box = row.querySelector('.pinbox');
   box.innerHTML = '<div class="empty">Starting pairing… look at the TV.</div>';

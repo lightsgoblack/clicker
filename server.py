@@ -24,6 +24,7 @@ import ipaddress
 import platform
 import secrets
 import re
+import socket
 import shutil
 import signal
 import subprocess
@@ -33,20 +34,22 @@ import time
 import urllib.parse
 import webbrowser
 from collections import OrderedDict
+from html import unescape as html_unescape
 from pathlib import Path
+from types import SimpleNamespace
 
 import aiohttp
 from aiohttp import web
 
 import pyatv
 from pyatv import exceptions
-from pyatv.const import InputAction, Protocol, PowerState, DeviceState
+from pyatv.const import InputAction, Protocol, PowerState, DeviceState, MediaType
 from pyatv.interface import DeviceListener
 from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.8.1"
+VERSION = "1.9.0"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -122,6 +125,7 @@ class State:
         self.atv = None
         self.config = None
         self.configs = {}  # identifier -> BaseConfig from last scan
+        self.rokus = {}    # identifier -> RokuDevice from last scan
         self.pairing = None
         self.pairing_protocol = None
         self.prefs_path = DATA_DIR / "prefs.json"
@@ -347,13 +351,22 @@ class State:
     async def scan(self, timeout=5):
         if self.demo:
             return [DemoDevice.config()]
-        configs = await pyatv.scan(self.loop, timeout=timeout, storage=self.storage)
-        # Only things that are actually Apple TVs (or can take remote commands).
+        atv_task = pyatv.scan(self.loop, timeout=timeout, storage=self.storage)
+        roku_task = roku_scan(timeout=timeout)
+        configs, rokus = await asyncio.gather(atv_task, roku_task, return_exceptions=True)
         keep = []
-        for c in configs:
-            protos = {s.protocol for s in c.services}
-            if Protocol.Companion in protos or Protocol.MRP in protos or Protocol.DMAP in protos:
-                keep.append(c)
+        if isinstance(configs, list):
+            for c in configs:
+                protos = {s.protocol for s in c.services}
+                if Protocol.Companion in protos or Protocol.MRP in protos or Protocol.DMAP in protos:
+                    keep.append(c)
+        elif isinstance(configs, Exception):
+            log.info("Apple TV scan failed: %s", configs)
+        if isinstance(rokus, list):
+            self.rokus = {d.identifier: d for d in rokus}
+            keep += [d.config() for d in rokus]
+        elif isinstance(rokus, Exception):
+            log.info("Roku scan failed: %s", rokus)
         self.configs = {c.identifier: c for c in keep}
         return keep
 
@@ -372,6 +385,7 @@ class State:
             "model": c.device_info.model.name if c.device_info else "Unknown",
             "os": c.device_info.version if c.device_info else None,
             "services": services,
+            "kind": getattr(c, "kind", "appletv"),
         }
 
     async def connect(self, identifier):
@@ -386,6 +400,21 @@ class State:
             conf = self.configs.get(identifier)
         if conf is None:
             raise RuntimeError("Device not found on the network. Is it awake and on the same Wi-Fi?")
+        if str(identifier).startswith("roku:"):
+            dev = self.rokus.get(identifier)
+            if dev is None:
+                raise RuntimeError("That Roku is no longer answering. Scan again.")
+            await self.disconnect()
+            try:
+                await dev.ecp("query/device-info")          # wake the session and learn if we are blocked
+            except RokuLimited:
+                pass                                        # connect anyway; the UI explains the setting
+            self.atv = dev
+            self.config = conf
+            self.prefs["last"] = identifier
+            self.remember_device(conf)
+            self.save_prefs()
+            return
         await self.disconnect()
         atv = await pyatv.connect(conf, self.loop, storage=self.storage)
         atv.listener = Listener(self)
@@ -496,6 +525,9 @@ class State:
             # Only judge an app while it is actually playing; an idle app has nothing to report.
             if out["playing"]["state"] in ("playing", "paused"):
                 self.note_app_metadata(getattr(getattr(self.atv.metadata, "app", None), "identifier", None), bool(playing.title))
+        except RokuLimited as e:
+            out["playing"] = None
+            out["blocked"] = str(e)
         except Exception as e:  # metadata is best-effort
             out["playing"] = None
             out["playingError"] = str(e)
@@ -519,6 +551,7 @@ class State:
         app_id = (out.get("app") or {}).get("identifier")
         out["appHidesMeta"] = self.prefs.get("app_meta", {}).get(app_id) == "hides" if app_id else False
         out["tagged"] = bool(self.tag and self.tag.get("app") == app_id)
+        out["kind"] = getattr(self.config, "kind", "appletv")
         out["sleepAt"] = self.sleep_at
         out["kidMode"] = bool(self.prefs.get("kid_mode"))
         return out
@@ -647,6 +680,337 @@ class DemoDevice:
             services=[svc(Protocol.AirPlay), svc(Protocol.Companion)],
         )
 
+
+
+
+# ---------------------------------------------------------------------------
+# Roku, over its External Control Protocol: plain HTTP on port 8060, no pairing,
+# no encryption. These classes duck-type the small slice of the pyatv interface
+# Clicker uses, exactly as DemoDevice does, so every feature works unchanged.
+# ---------------------------------------------------------------------------
+
+ROKU_PORT = 8060
+ROKU_LIMITED = "not allowed in Limited mode"
+ROKU_HOME_ID = "562859"
+
+# Clicker command -> Roku key. Roku has no screensaver or stop button.
+ROKU_KEYS = {
+    "up": "Up", "down": "Down", "left": "Left", "right": "Right", "select": "Select",
+    "menu": "Back", "home": "Home", "home_hold": "Home", "top_menu": "Home",
+    "play": "Play", "pause": "Play", "play_pause": "Play",
+    "next": "Fwd", "previous": "Rev", "skip_forward": "Fwd", "skip_backward": "InstantReplay",
+    "volume_up": "VolumeUp", "volume_down": "VolumeDown", "control_center": "Info",
+    "channel_up": "ChannelUp", "channel_down": "ChannelDown", "guide": "Info",
+    "suspend": "PowerOff", "wakeup": "PowerOn",
+}
+
+ROKU_HELP = ("This Roku is blocking remote control. On the TV go to Settings, System, "
+             "Advanced system settings, Control by mobile apps, Network access, and choose Permissive.")
+
+
+def _xml_text(xml, tag):
+    m = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", xml, re.S)
+    return m.group(1).strip() if m else None
+
+
+class RokuError(RuntimeError):
+    pass
+
+
+class RokuLimited(RokuError):
+    """The TV's "Control by mobile apps" setting is blocking us."""
+
+
+class _RokuRemote:
+    def __init__(self, dev):
+        self.dev = dev
+
+    def __getattr__(self, name):
+        if name not in COMMANDS:
+            raise AttributeError(name)
+
+        async def cmd(action=None):
+            key = ROKU_KEYS.get(name)
+            if not key:
+                raise exceptions.NotSupportedError(f"Roku has no {name.replace('_', ' ')} button")
+            await self.dev.ecp(f"keypress/{key}", "POST")
+        return cmd
+
+
+class _RokuApps:
+    def __init__(self, dev):
+        self.dev = dev
+
+    async def app_list(self):
+        xml = await self.dev.ecp("query/apps")
+        out = []
+        for m in re.finditer(r'<app id="([^"]+)"[^>]*>([^<]*)</app>', xml):
+            out.append(SimpleNamespace(identifier=m.group(1), name=html_unescape(m.group(2))))
+        return out
+
+    async def launch_app(self, target):
+        # A Roku "bundle id" is a numeric channel id; a roku:// URL carries deep-link parameters.
+        if target.startswith(("http://", "https://", "roku://")):
+            u = urllib.parse.urlparse(target)
+            app_id = u.netloc or u.path.strip("/").split("/")[0]
+            if not app_id.isdigit():
+                raise exceptions.NotSupportedError("A Roku deep link looks like roku://12?contentId=xyz")
+            await self.dev.ecp(f"launch/{app_id}" + (f"?{u.query}" if u.query else ""), "POST")
+        else:
+            await self.dev.ecp(f"launch/{target}", "POST")
+
+
+class _RokuKeyboard:
+    def __init__(self, dev):
+        self.dev = dev
+
+    async def text_set(self, text):
+        for ch in text:
+            await self.dev.ecp("keypress/Lit_" + urllib.parse.quote(ch, safe=""), "POST")
+
+    async def text_clear(self):
+        for _ in range(40):
+            await self.dev.ecp("keypress/Backspace", "POST")
+
+
+class _RokuPower:
+    def __init__(self, dev):
+        self.dev = dev
+
+    @property
+    def power_state(self):
+        return PowerState.On if self.dev.power_mode == "PowerOn" else PowerState.Off
+
+    async def turn_on(self):
+        await self.dev.ecp("keypress/PowerOn", "POST")
+        self.dev.power_mode = "PowerOn"
+
+    async def turn_off(self):
+        await self.dev.ecp("keypress/PowerOff", "POST")
+        self.dev.power_mode = "Ready"
+
+
+class _RokuMetadata:
+    def __init__(self, dev):
+        self.dev = dev
+        self._app = None
+
+    @property
+    def app(self):
+        return self._app
+
+    async def playing(self):
+        xml = await self.dev.ecp("query/active-app")
+        m = re.search(r'<app id="([^"]+)"[^>]*>([^<]*)</app>', xml)
+        if m and m.group(1) != ROKU_HOME_ID:
+            self._app = SimpleNamespace(identifier=m.group(1), name=html_unescape(m.group(2)))
+        else:
+            self._app = SimpleNamespace(identifier=None, name="Home")
+
+        state, pos, total, title, series = DeviceState.Idle, None, None, None, None
+        try:
+            player = await self.dev.ecp("query/media-player")
+            st = re.search(r'state="([^"]+)"', player)
+            if st:
+                state = {"play": DeviceState.Playing, "pause": DeviceState.Paused,
+                         "stop": DeviceState.Idle, "close": DeviceState.Idle,
+                         "buffer": DeviceState.Loading, "startup": DeviceState.Loading}.get(
+                    st.group(1), DeviceState.Idle)
+            for tag in ("position", "duration"):
+                v = _xml_text(player, tag)
+                if v and v.rstrip().endswith("ms"):
+                    n = int(v.strip()[:-2].strip()) // 1000
+                    if tag == "position":
+                        pos = n
+                    else:
+                        total = n
+            title = _xml_text(player, "title") or None
+            series = _xml_text(player, "series_title") or None
+        except RokuLimited:
+            raise
+        except Exception:
+            pass
+        return SimpleNamespace(
+            device_state=state, title=title, artist=None, album=None, series_name=series,
+            season_number=None, episode_number=None, position=pos, total_time=total,
+            media_type=MediaType.Unknown, content_identifier=None,
+        )
+
+
+class RokuDevice:
+    """A Roku wearing the same shape as a pyatv device."""
+
+    def __init__(self, host, name, model, version, identifier, power_mode="PowerOn"):
+        self.host, self.name, self.model, self.version = host, name, model, version
+        self.identifier, self.power_mode = identifier, power_mode
+        self.limited = False
+        self.remote_control = _RokuRemote(self)
+        self.apps = _RokuApps(self)
+        self.keyboard = _RokuKeyboard(self)
+        self.power = _RokuPower(self)
+        self.metadata = _RokuMetadata(self)
+        self.listener = None
+        self._session = None
+
+    async def ecp(self, path, method="GET"):
+        # Roku closes the socket after every response, so never let aiohttp pool one.
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=6),
+                connector=aiohttp.TCPConnector(force_close=True, limit=8),
+                headers={"Connection": "close"},
+            )
+        url = f"http://{self.host}:{ROKU_PORT}/{path}"
+        last = None
+        for attempt in range(2):
+            try:
+                async with self._session.request(method, url) as r:
+                    body = await r.text()
+                break
+            except aiohttp.ClientError as e:
+                last = e
+                if attempt == 0:
+                    await asyncio.sleep(0.15)
+        else:
+            raise RokuError(f"Could not reach the Roku: {last}")
+        if r.status == 403 or ROKU_LIMITED in body:
+            self.limited = True
+            raise RokuLimited(ROKU_HELP)
+        if r.status >= 400:
+            raise RokuError(f"The Roku answered HTTP {r.status}")
+        self.limited = False
+        return body
+
+    def close(self):
+        if self._session and not self._session.closed:
+            try:
+                asyncio.get_event_loop().create_task(self._session.close())
+            except Exception:
+                pass
+        self._session = None
+
+    def config(self):
+        svc = SimpleNamespace(protocol=SimpleNamespace(name="ECP"), credentials="open",
+                              pairing=SimpleNamespace(name="NotNeeded"))
+        return SimpleNamespace(
+            identifier=self.identifier, name=self.name, address=self.host,
+            device_info=SimpleNamespace(model=SimpleNamespace(name=self.model), version=self.version),
+            services=[svc], kind="roku",
+        )
+
+
+async def roku_probe(session, host):
+    """Ask one address whether it is a Roku."""
+    try:
+        async with session.get(f"http://{host}:{ROKU_PORT}/query/device-info",
+                               timeout=aiohttp.ClientTimeout(total=2.5)) as r:
+            if r.status != 200:
+                return None
+            xml = await r.text()
+    except Exception:
+        return None
+    if "<device-info" not in xml:
+        return None
+    name = (_xml_text(xml, "user-device-name") or _xml_text(xml, "friendly-device-name")
+            or _xml_text(xml, "default-device-name") or "Roku")
+    udn = _xml_text(xml, "udn") or _xml_text(xml, "serial-number") or host
+    return RokuDevice(
+        host=host, name=html_unescape(name),
+        model=_xml_text(xml, "model-name") or "Roku",
+        version=_xml_text(xml, "software-version"),
+        identifier="roku:" + udn,
+        power_mode=_xml_text(xml, "power-mode") or "PowerOn",
+    )
+
+
+def _local_hosts():
+    """Every address on our own subnets. Home mesh routers hand out /22s, so allow
+    those, and stop before anything big enough to be slow or rude to sweep."""
+    hosts = set()
+    try:
+        import ifaddr
+        for a in ifaddr.get_adapters():
+            for ip in a.ips:
+                if not isinstance(ip.ip, str):
+                    continue
+                try:
+                    addr = ipaddress.ip_address(ip.ip)
+                except ValueError:
+                    continue
+                if not addr.is_private or addr.is_loopback:
+                    continue
+                prefix = int(ip.network_prefix or 0)
+                if not 20 <= prefix <= 32:
+                    continue
+                net = ipaddress.ip_network(f"{ip.ip}/{prefix}", strict=False)
+                if net.num_addresses <= 4096:
+                    hosts.update(str(h) for h in net.hosts())
+    except Exception:
+        pass
+    return hosts
+
+
+async def _port_open(host, port=ROKU_PORT, timeout=0.9):
+    """A TCP connect is far cheaper than an HTTP request, so sweep with this first."""
+    try:
+        fut = asyncio.open_connection(host, port)
+        reader, writer = await asyncio.wait_for(fut, timeout=timeout)
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        return host
+    except Exception:
+        return None
+
+
+async def roku_scan(timeout=6, extra_hosts=()):
+    """SSDP first (instant when it works), then a two-stage sweep: a cheap TCP knock on
+    every local address, then a real query against whatever answered."""
+    hosts = set(extra_hosts)
+    try:
+        loop = asyncio.get_event_loop()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+        sock.setblocking(False)
+        msg = ("M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\n"
+               'MAN: "ssdp:discover"\r\nST: roku:ecp\r\nMX: 2\r\n\r\n').encode()
+        await loop.sock_sendto(sock, msg, ("239.255.255.250", 1900))
+        end = time.time() + 1.5
+        while time.time() < end:
+            try:
+                _, addr = await asyncio.wait_for(loop.sock_recvfrom(sock, 2048),
+                                                 timeout=max(0.05, end - time.time()))
+                hosts.add(addr[0])
+            except Exception:
+                break
+        sock.close()
+    except Exception:
+        pass
+
+    sweep = _local_hosts() - hosts
+    if sweep:
+        sem = asyncio.Semaphore(256)
+
+        async def knock(h):
+            async with sem:
+                return await _port_open(h)
+        results = await asyncio.gather(*(knock(h) for h in sweep), return_exceptions=True)
+        hosts |= {r for r in results if isinstance(r, str)}
+
+    found = {}
+    if hosts:
+        async with aiohttp.ClientSession() as session:
+            sem2 = asyncio.Semaphore(64)
+
+            async def one(h):
+                async with sem2:
+                    dev = await roku_probe(session, h)
+                    if dev and dev.identifier not in found:
+                        found[dev.identifier] = dev
+            await asyncio.gather(*(one(h) for h in hosts), return_exceptions=True)
+    return list(found.values())
 
 
 # ---------------------------------------------------------------------------
@@ -1168,8 +1532,10 @@ def routes(state: State):
                 await fn(action=action)
             else:
                 await fn()
-        except exceptions.NotSupportedError:
-            return json_error(f"'{name}' is not supported by this device or protocol.", 501)
+        except RokuLimited as e:
+            return json_error(str(e), 403)
+        except exceptions.NotSupportedError as e:
+            return json_error(str(e) or f"'{name}' is not supported by this device.", 501)
         except Exception as e:
             return json_error(f"{name} failed: {e}", 500)
         return web.json_response({"ok": True})
@@ -1179,6 +1545,8 @@ def routes(state: State):
         atv = need_device()
         try:
             lst = await atv.apps.app_list()
+        except RokuLimited as e:
+            return json_error(str(e), 403)
         except exceptions.NotSupportedError:
             return json_error("Listing apps needs Companion pairing.", 501)
         except Exception as e:
@@ -1205,8 +1573,10 @@ def routes(state: State):
                 state.pending_tag = {"title": label, "source": "launch"}
             elif label:
                 state.pending_tag = None
-        except exceptions.NotSupportedError:
-            return json_error("Launching apps needs Companion pairing.", 501)
+        except RokuLimited as e:
+            return json_error(str(e), 403)
+        except exceptions.NotSupportedError as e:
+            return json_error(str(e) or "Launching apps needs Companion pairing.", 501)
         except Exception as e:
             return json_error(f"Launch failed: {e}", 500)
         return web.json_response({"ok": True})
@@ -1227,6 +1597,8 @@ def routes(state: State):
                 await atv.keyboard.text_clear()
             else:
                 await atv.keyboard.text_set(txt)
+        except RokuLimited as e:
+            return json_error(str(e), 403)
         except exceptions.NotSupportedError:
             return json_error("Typing needs Companion pairing.", 501)
         except Exception as e:
@@ -1242,6 +1614,8 @@ def routes(state: State):
                 await atv.power.turn_on()
             else:
                 await atv.power.turn_off()
+        except RokuLimited as e:
+            return json_error(str(e), 403)
         except exceptions.NotSupportedError:
             return json_error("Power control needs Companion pairing.", 501)
         except Exception as e:
@@ -1322,11 +1696,16 @@ def routes(state: State):
         if not q:
             return json_error("Type something to search for.")
         try:
-            await atv.apps.launch_app("com.apple.TVSearch")
-            await asyncio.sleep(3.0)
-            await atv.keyboard.text_set(q)
-            await asyncio.sleep(0.8)
-            await atv.remote_control.select()
+            if isinstance(atv, RokuDevice):
+                await atv.ecp("search/browse?keyword=" + urllib.parse.quote(q), "POST")
+            else:
+                await atv.apps.launch_app("com.apple.TVSearch")
+                await asyncio.sleep(3.0)
+                await atv.keyboard.text_set(q)
+                await asyncio.sleep(0.8)
+                await atv.remote_control.select()
+        except RokuLimited as e:
+            return json_error(str(e), 403)
         except exceptions.NotSupportedError:
             return json_error("Search needs the apps pairing.", 501)
         except Exception as e:

@@ -49,7 +49,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.9.0"
+VERSION = "1.9.1"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -1540,6 +1540,28 @@ def routes(state: State):
             return json_error(f"{name} failed: {e}", 500)
         return web.json_response({"ok": True})
 
+    @r.get("/api/appicon")
+    async def appicon(req):
+        """Rokus serve real channel artwork; use it instead of our drawn icons."""
+        atv = need_device()
+        if not isinstance(atv, RokuDevice):
+            return json_error("Only Rokus provide channel icons.", 404)
+        app_id = (req.query.get("id") or "").strip()
+        if not re.fullmatch(r"[\w.\-]{1,40}", app_id):
+            return json_error("Bad id.")
+        try:
+            url = f"http://{atv.host}:{ROKU_PORT}/query/icon/{urllib.parse.quote(app_id)}"
+            async with aiohttp.ClientSession() as sess:
+                async with sess.get(url, timeout=aiohttp.ClientTimeout(total=6)) as r:
+                    if r.status != 200:
+                        return json_error("No icon.", 404)
+                    body = await r.read()
+                    ctype = r.headers.get("Content-Type", "image/png")
+        except Exception as e:
+            return json_error(f"Icon failed: {e}", 502)
+        return web.Response(body=body, content_type=ctype.split(";")[0],
+                            headers={"Cache-Control": "public, max-age=86400"})
+
     @r.get("/api/apps")
     async def apps(_):
         atv = need_device()
@@ -1551,11 +1573,13 @@ def routes(state: State):
             return json_error("Listing apps needs Companion pairing.", 501)
         except Exception as e:
             return json_error(f"Could not list apps: {e}", 500)
-        apps_ = sorted(
-            [{"name": a.name, "identifier": a.identifier} for a in lst],
-            key=lambda a: (a["name"] or "").lower(),
-        )
-        return web.json_response({"ok": True, "apps": apps_})
+        roku = isinstance(atv, RokuDevice)
+        apps_ = [{"name": a.name, "identifier": a.identifier,
+                  "input": bool(roku and str(a.identifier).startswith("tvinput.")),
+                  "icon": (f"/api/appicon?id={urllib.parse.quote(str(a.identifier))}" if roku else None)}
+                 for a in lst]
+        apps_.sort(key=lambda a: (a["input"], (a["name"] or "").lower()))
+        return web.json_response({"ok": True, "apps": apps_, "kind": "roku" if roku else "appletv"})
 
     @r.post("/api/launch")
     async def launch(req):

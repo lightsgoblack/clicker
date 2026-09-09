@@ -590,6 +590,8 @@ html[data-phone] .grid{grid-template-columns:1fr}
 .ico.brand{border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 3px 8px rgba(0,0,0,.28);position:relative;overflow:hidden}
 .ico.brand:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 55%);pointer-events:none}
 .ico.brand svg{width:66%;height:66%;position:relative}
+.ico.photo img{width:100%;height:100%;object-fit:cover;border-radius:inherit;position:relative}
+.ico.photo{overflow:hidden}
 .ico.brand svg text{letter-spacing:normal!important;text-transform:none!important;font-style:normal!important}
 .tile .ico{width:56px;height:56px;border-radius:15px}
 .tile .ico.brand svg{width:64%;height:64%}
@@ -1183,6 +1185,13 @@ function saveFavs() { store.set('favs', favs); renderFavs(); }
 
 function iconEl(f, cls = 'ico') {
   const el = document.createElement('div'); el.className = cls;
+  if (f.iconUrl) {
+    el.classList.add('brand', 'photo'); el.style.background = 'var(--surface2)';
+    const im = document.createElement('img'); im.src = f.iconUrl; im.alt = ''; im.loading = 'lazy';
+    // A Roku icon is only available while that Roku is the connected device.
+    im.onerror = () => { const alt = iconEl(Object.assign({}, f, { iconUrl: null }), cls); el.replaceWith(alt); };
+    el.appendChild(im); return el;
+  }
   let key = f.icon && ICONS[f.icon] ? f.icon : null;
   if (!key) { const c = CATALOG.find(c => c.value === f.value && c.kind === f.kind); if (c && ICONS[c.icon]) key = c.icon; }
   if (!key && !(f.icon || '').trim() && ICONS[f.kind]) key = f.kind;
@@ -1653,7 +1662,12 @@ async function openAddSheet() {
         pane.innerHTML = '';
         const q = document.createElement('input'); q.placeholder = 'Filter…'; q.style.marginBottom = '8px'; pane.appendChild(q);
         const list = document.createElement('div'); list.className = 'list'; pane.appendChild(list);
-        const draw = () => { list.innerHTML = ''; apps.filter(a => (a.name || '').toLowerCase().includes(q.value.toLowerCase())).forEach(a => { const c = CATALOG.find(x => x.value === a.identifier); list.appendChild(pickRow({ label: a.name, icon: c ? c.icon : '', color: c ? c.color : '', kind: 'app', value: a.identifier })); }); };
+        const draw = () => { list.innerHTML = ''; let lastInput = null;
+          apps.filter(a => (a.name || '').toLowerCase().includes(q.value.toLowerCase())).forEach(a => {
+            if (a.input !== lastInput) { lastInput = a.input; if (a.input) { const h = document.createElement('div'); h.className = 'sec'; h.textContent = 'TV inputs'; list.appendChild(h); } }
+            const c = CATALOG.find(x => x.value === a.identifier);
+            list.appendChild(pickRow({ label: a.name, icon: c ? c.icon : '', color: c ? c.color : '', kind: 'app', value: a.identifier, iconUrl: a.icon || null }));
+          }); };
         q.oninput = draw; draw();
       } catch (e) { pane.innerHTML = `<div class="empty">${e.message}</div>`; }
     } else {

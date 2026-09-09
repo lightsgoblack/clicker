@@ -1,0 +1,497 @@
+<title>Clicker Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Dark-first: the app itself is a dark remote, so the guide wears the same clothes.
+     Light is fully defined for anyone who picks it. */
+  :root {
+    --ink: #0b0c0f;
+    --surface: #15171c;
+    --surface-2: #1c1f26;
+    --line: #262a33;
+    --line-strong: #363b47;
+    --bone: #e8e9ec;
+    --muted: #8f95a1;
+    --faint: #626875;
+    --amber: #f0b35c;
+    --amber-deep: #c98b32;
+    --amber-soft: rgba(240, 179, 92, .13);
+    --on-amber: #171106;
+    --good: #64d59a;
+    --warn: #e5884d;
+    --shadow: 0 18px 44px rgba(0, 0, 0, .55);
+    --keycap-top: #23262e;
+    --keycap-bottom: #14161b;
+
+    --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --ink: #f4f2ec;
+    --surface: #fffdf8;
+    --surface-2: #efece3;
+    --line: #ddd8cb;
+    --line-strong: #c3bcaa;
+    --bone: #1c1a17;
+    --muted: #5f5a51;
+    --faint: #928c80;
+    --amber: #b0731c;
+    --amber-deep: #8d5a11;
+    --amber-soft: rgba(176, 115, 28, .11);
+    --on-amber: #fffdf8;
+    --good: #1f8a5b;
+    --warn: #a8541c;
+    --shadow: 0 14px 34px rgba(60, 50, 30, .13);
+    --keycap-top: #fffdf8;
+    --keycap-bottom: #e9e4d8;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+    --ink: #f4f2ec;
+    --surface: #fffdf8;
+    --surface-2: #efece3;
+    --line: #ddd8cb;
+    --line-strong: #c3bcaa;
+    --bone: #1c1a17;
+    --muted: #5f5a51;
+    --faint: #928c80;
+    --amber: #b0731c;
+    --amber-deep: #8d5a11;
+    --amber-soft: rgba(176, 115, 28, .11);
+    --on-amber: #fffdf8;
+    --good: #1f8a5b;
+    --warn: #a8541c;
+    --shadow: 0 14px 34px rgba(60, 50, 30, .13);
+    --keycap-top: #fffdf8;
+    --keycap-bottom: #e9e4d8;
+    color-scheme: light;
+  }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--bone);
+    font-family: var(--body);
+    font-size: 16.5px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative;
+    padding: 64px 0 44px;
+    display: flex;
+    gap: 26px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    left: -140px; top: -180px;
+    width: 620px; height: 620px;
+    background: radial-gradient(circle, var(--amber-soft), transparent 66%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .mark { width: 88px; height: 88px; flex: none; border-radius: 24px; box-shadow: var(--shadow); }
+  .hero-copy { min-width: min(100%, 380px); flex: 1; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: clamp(34px, 5.2vw, 52px);
+    line-height: 1.04;
+    letter-spacing: -.015em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--muted); font-size: 17.5px; max-width: 62ch; }
+  .lede strong { color: var(--bone); font-weight: 600; }
+
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+  }
+  .badge.on { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+
+  /* ---------- tracks ---------- */
+  .tracks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    gap: 22px;
+    margin-top: 46px;
+    align-items: start;
+  }
+  .track {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 26px 24px 28px;
+  }
+  .track-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .track h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 25px;
+    letter-spacing: -.01em;
+    margin: 0;
+  }
+  .track-note {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .track-sub { color: var(--muted); font-size: 15px; margin: 0 0 22px; }
+
+  /* Steps are a genuine sequence, so they are numbered. The numeral sits in a
+     keycap, which is the one shape this subject actually owns. */
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 20px; }
+  ol.steps > li { display: grid; grid-template-columns: 42px 1fr; gap: 15px; align-items: start; }
+  .cap {
+    width: 42px; height: 42px;
+    border-radius: 13px;
+    background: linear-gradient(var(--keycap-top), var(--keycap-bottom));
+    border: 1px solid var(--line-strong);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 5px rgba(0, 0, 0, .3);
+    display: grid;
+    place-items: center;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--amber);
+    font-variant-numeric: tabular-nums;
+  }
+  .step-body h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    margin: 9px 0 5px;
+    line-height: 1.3;
+  }
+  .step-body p { margin: 0; color: var(--muted); font-size: 15px; }
+  .step-body p + p { margin-top: 7px; }
+
+  kbd, .path {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    padding: 2px 6px;
+    color: var(--bone);
+    white-space: nowrap;
+  }
+  .path { white-space: normal; line-height: 2; }
+
+  a { color: var(--amber); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: var(--amber-deep); }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 4px; }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--amber);
+    color: var(--on-amber);
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+    padding: 11px 18px;
+    border-radius: 12px;
+    margin-top: 4px;
+  }
+  .cta:hover { background: var(--amber-deep); color: var(--on-amber); }
+
+  pre {
+    margin: 10px 0 0;
+    background: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--bone);
+  }
+  :root[data-theme="light"] pre { background: var(--surface-2); }
+
+  /* ---------- one-time TV settings ---------- */
+  .tv {
+    margin-top: 22px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface);
+    padding: 26px 24px 28px;
+  }
+  .tv h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 25px;
+    margin: 0 0 4px;
+    letter-spacing: -.01em;
+  }
+  .tv > p { color: var(--muted); font-size: 15px; margin: 0 0 20px; max-width: 70ch; }
+  .tv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+  .tv-card {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber);
+    border-radius: 12px;
+    padding: 16px 18px;
+    background: var(--surface-2);
+  }
+  .tv-card h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 600; }
+  .tv-card .why { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+
+  /* ---------- troubleshooting ---------- */
+  .fixes { margin-top: 22px; }
+  .fixes h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 25px;
+    margin: 0 0 16px;
+    letter-spacing: -.01em;
+  }
+  .fix {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 14px 26px;
+    padding: 15px 0;
+    border-top: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .fix:last-child { border-bottom: 1px solid var(--line); }
+  .fix dt { font-weight: 600; font-size: 15.5px; }
+  .fix dd { margin: 0; color: var(--muted); font-size: 15px; }
+
+  footer {
+    margin-top: 46px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .toggle {
+    background: none;
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .toggle:hover { color: var(--bone); border-color: var(--amber); }
+
+  @media (max-width: 640px) {
+    .page { padding: 0 18px 72px; }
+    .hero { padding: 40px 0 30px; gap: 18px; }
+    .mark { width: 66px; height: 66px; border-radius: 19px; }
+    .fix { grid-template-columns: 1fr; gap: 4px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+  <header class="hero">
+    <svg class="mark" viewBox="0 0 1024 1024" role="img" aria-label="Clicker icon">
+      <rect width="1024" height="1024" rx="230" fill="#0b0a08"></rect>
+      <path d="M512 96 C 745 300, 745 724, 512 928 C 279 724, 279 300, 512 96 Z" fill="#e9e4d8"></path>
+      <path d="M512 150 C 700 330, 700 694, 512 874 C 324 694, 324 330, 512 150 Z" fill="none" stroke="#0b0a08" stroke-width="8"></path>
+      <circle cx="512" cy="512" r="236" fill="#f0b35c"></circle>
+      <circle cx="512" cy="512" r="236" fill="none" stroke="#0b0a08" stroke-width="8"></circle>
+      <circle cx="512" cy="512" r="150" fill="#0b0a08"></circle>
+      <circle cx="512" cy="512" r="124" fill="none" stroke="#f0b35c" stroke-width="5" stroke-dasharray="3 14"></circle>
+      <circle cx="512" cy="512" r="44" fill="#f0b35c"></circle>
+      <circle cx="565" cy="452" r="26" fill="#e9e4d8"></circle>
+    </svg>
+    <div class="hero-copy">
+      <p class="eyebrow">Setup, about five minutes</p>
+      <h1>Get Clicker on your Mac and your phone</h1>
+      <p class="lede">Clicker is a remote for your TV that runs on your Mac and opens on your phone. <strong>One app covers both Apple TV and Roku.</strong> It is free, it never leaves your Wi-Fi, and there is no account to make.</p>
+      <div class="badges">
+        <span class="badge on">Apple TV</span>
+        <span class="badge on">Roku</span>
+        <span class="badge">Mac + iPhone</span>
+        <span class="badge">No account</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tracks">
+    <section class="track">
+      <div class="track-head">
+        <h2>On the Mac</h2>
+        <span class="track-note">Start here</span>
+      </div>
+      <p class="track-sub">The Mac does the talking to your TV, so it needs to be awake and on the same Wi-Fi.</p>
+      <ol class="steps">
+        <li>
+          <span class="cap">1</span>
+          <div class="step-body">
+            <h3>Download it</h3>
+            <p>Grab <span class="path">Clicker-mac-arm64.zip</span> from the releases page. Unzip it and drag <strong>Clicker</strong> into your Applications folder.</p>
+            <a class="cta" href="https://github.com/lightsgoblack/clicker/releases/latest" target="_blank" rel="noopener">Download Clicker &rarr;</a>
+            <p style="margin-top:10px">Older Intel Mac? Use the one-line installer instead, which builds it right on your machine:</p>
+            <pre>curl -fsSL https://raw.githubusercontent.com/lightsgoblack/clicker/main/install.sh | bash</pre>
+          </div>
+        </li>
+        <li>
+          <span class="cap">2</span>
+          <div class="step-body">
+            <h3>Open it once the long way</h3>
+            <p>macOS will say it cannot verify the app. Click <strong>Done</strong>, then open <span class="path">System Settings &rsaquo; Privacy &amp; Security</span>, scroll to the bottom, and click <strong>Open Anyway</strong>.</p>
+            <p>This happens once, because the app is not signed by a paid developer account yet.</p>
+          </div>
+        </li>
+        <li>
+          <span class="cap">3</span>
+          <div class="step-body">
+            <h3>Keep it in the Dock</h3>
+            <p>Open your Applications folder and drag <strong>Clicker</strong> onto the Dock. Clicking it starts the remote and opens it in your browser. It runs quietly with no window of its own.</p>
+          </div>
+        </li>
+        <li>
+          <span class="cap">4</span>
+          <div class="step-body">
+            <h3>Connect your TV</h3>
+            <p>The device list opens by itself the first time. <strong>Roku</strong> needs nothing: tap Connect. <strong>Apple TV</strong> asks you to type a PIN off the screen twice, once for the remote and once for apps.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="track">
+      <div class="track-head">
+        <h2>On the iPhone</h2>
+        <span class="track-note">After the Mac</span>
+      </div>
+      <p class="track-sub">The phone talks to the Mac, so leave the Mac awake and both on the same Wi-Fi.</p>
+      <ol class="steps">
+        <li>
+          <span class="cap">1</span>
+          <div class="step-body">
+            <h3>Turn on Party mode</h3>
+            <p>In Clicker on the Mac, click the <strong>QR button</strong> in the top right, then switch it <strong>On</strong>. A code appears.</p>
+            <p>Turning it off later locks every phone out again.</p>
+          </div>
+        </li>
+        <li>
+          <span class="cap">2</span>
+          <div class="step-body">
+            <h3>Scan the code</h3>
+            <p>Point the iPhone camera at it and tap the link. The remote opens in Safari, sized for a phone.</p>
+          </div>
+        </li>
+        <li>
+          <span class="cap">3</span>
+          <div class="step-body">
+            <h3>Add it to the Home Screen</h3>
+            <p>Tap the <strong>Share</strong> button, choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>. You get the Clicker icon on your Home Screen.</p>
+          </div>
+        </li>
+        <li>
+          <span class="cap">4</span>
+          <div class="step-body">
+            <h3>Open it like an app</h3>
+            <p>It runs full screen with no browser bar, and it remembers its access, so it keeps working the next time you open it.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </div>
+
+  <section class="tv">
+    <h2>One setting on the TV</h2>
+    <p>Most TVs are ready as they are. If buttons do nothing, it is almost always one of these two settings, and each is a one-time change.</p>
+    <div class="tv-grid">
+      <div class="tv-card">
+        <h3>Roku</h3>
+        <p class="why">If the remote connects but nothing moves on screen.</p>
+        <div class="path">Settings &rsaquo; System &rsaquo; Advanced system settings &rsaquo; Control by mobile apps &rsaquo; Network access &rsaquo; <strong>Permissive</strong></div>
+      </div>
+      <div class="tv-card">
+        <h3>Apple TV</h3>
+        <p class="why">If no PIN ever appears while pairing.</p>
+        <div class="path">Settings &rsaquo; AirPlay and HomeKit &rsaquo; Allow Access &rsaquo; <strong>Everyone</strong> or <strong>Anyone on the Same Network</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="fixes">
+    <h2>If something is off</h2>
+    <dl>
+      <div class="fix">
+        <dt>No TVs found when scanning</dt>
+        <dd>The Mac and the TV have to be on the same Wi-Fi, not a guest network. Wake the TV and scan again.</dd>
+      </div>
+      <div class="fix">
+        <dt>The phone says Party mode is off</dt>
+        <dd>Turn it back on in Clicker on the Mac and scan the code again. The code changes each time, which is what makes turning it off a real lock.</dd>
+      </div>
+      <div class="fix">
+        <dt>The phone cannot reach it at all</dt>
+        <dd>The Mac went to sleep, or Clicker is not running. Open Clicker from the Dock and try again.</dd>
+      </div>
+      <div class="fix">
+        <dt>Netflix shows no title</dt>
+        <dd>Netflix does not tell anything on your network what it is playing. Tap <strong>What's on?</strong> on the Now Playing card and type it, and the rest of the app catches up.</dd>
+      </div>
+      <div class="fix">
+        <dt>The app looks like a shrunken desktop page</dt>
+        <dd>Safari is in desktop mode for the site. Tap the <strong>aA</strong> button in the address bar and turn off Request Desktop Website.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <footer>
+    <span>Clicker &middot; free, no account, nothing leaves your Wi-Fi</span>
+    <button class="toggle" id="themeToggle" type="button">Light</button>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById('themeToggle');
+    var root = document.documentElement;
+    function label() {
+      var dark = root.getAttribute('data-theme') !== 'light';
+      btn.textContent = dark ? 'Light' : 'Dark';
+    }
+    btn.addEventListener('click', function () {
+      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+      label();
+    });
+    label();
+  })();
+</script>

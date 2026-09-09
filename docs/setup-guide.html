@@ -103,7 +103,8 @@
     z-index: -1;
   }
   .mark { width: 88px; height: 88px; flex: none; border-radius: 24px; box-shadow: var(--shadow); }
-  .hero-copy { min-width: min(100%, 380px); flex: 1; }
+  .hero-copy { min-width: min(100%, 340px); flex: 1; }
+  .lede, .eyebrow, h1 { overflow-wrap: break-word; }
   .eyebrow {
     font-family: var(--mono);
     font-size: 11.5px;
@@ -146,6 +147,7 @@
     align-items: start;
   }
   .track {
+    min-width: 0;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 20px;
@@ -171,7 +173,9 @@
   /* Steps are a genuine sequence, so they are numbered. The numeral sits in a
      keycap, which is the one shape this subject actually owns. */
   ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 20px; }
-  ol.steps > li { display: grid; grid-template-columns: 42px 1fr; gap: 15px; align-items: start; }
+  ol.steps > li { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 15px; align-items: start; }
+  .step-body { min-width: 0; }
+  .step-body p, .step-body h3 { overflow-wrap: anywhere; }
   .cap {
     width: 42px; height: 42px;
     border-radius: 13px;
@@ -203,9 +207,9 @@
     border-radius: 6px;
     padding: 2px 6px;
     color: var(--bone);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
-  .path { white-space: normal; line-height: 2; }
+  .path { line-height: 2; display: inline-block; max-width: 100%; }
 
   a { color: var(--amber); text-underline-offset: 3px; text-decoration-thickness: 1px; }
   a:hover { color: var(--amber-deep); }
@@ -232,11 +236,12 @@
     border: 1px solid var(--line-strong);
     border-radius: 10px;
     padding: 12px 14px;
-    overflow-x: auto;
     font-family: var(--mono);
     font-size: 12.5px;
     line-height: 1.7;
     color: var(--bone);
+    white-space: pre-wrap;
+    word-break: break-all;
   }
   :root[data-theme="light"] pre { background: var(--surface-2); }
 
@@ -258,6 +263,7 @@
   .tv > p { color: var(--muted); font-size: 15px; margin: 0 0 20px; max-width: 70ch; }
   .tv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
   .tv-card {
+    min-width: 0;
     border: 1px solid var(--line);
     border-left: 3px solid var(--amber);
     border-radius: 12px;
@@ -286,7 +292,8 @@
   }
   .fix:last-child { border-bottom: 1px solid var(--line); }
   .fix dt { font-weight: 600; font-size: 15.5px; }
-  .fix dd { margin: 0; color: var(--muted); font-size: 15px; }
+  .fix dd { margin: 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
+  .fix dt { overflow-wrap: anywhere; }
 
   footer {
     margin-top: 46px;

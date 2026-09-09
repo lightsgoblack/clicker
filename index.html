@@ -400,8 +400,9 @@ html[data-theme="owens"] .bar{height:1px;background:var(--border)} html[data-the
 html[data-theme="owens"] footer{font-style:italic}
 @media (prefers-reduced-motion:reduce){html[data-theme="owens"] *,html[data-theme="vhs"] body,html[data-theme="vhs"] body::after,html[data-theme="lateshow"] body::before,html[data-theme="reactive"] body::before,html[data-theme="reactive"] .np .art{animation:none!important}}
 /* TV tabs */
-.tvtabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px}
-.tvtabs button{padding:5px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tvtabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px;min-width:0;flex:0 0 auto}
+.tvtabs button{padding:5px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
+.tvtabs button span{overflow:hidden;text-overflow:ellipsis}
 .tvtabs button.on{background:var(--surface3);color:var(--text)}
 .tvtabs button .dot{width:7px;height:7px;border-radius:50%;background:var(--faint)} .tvtabs button.on .dot{background:var(--ok)}
 .tvtabs button.more{padding:5px 8px;color:var(--faint)}
@@ -460,7 +461,8 @@ kbd{font:12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--sur
 
 /* Header */
 header{display:flex;align-items:center;gap:10px;padding:6px 0 16px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:17px;white-space:nowrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:17px;white-space:nowrap;min-width:0;flex:0 1 auto}
+.brand .full,.brand .short{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .brand .short{display:none}
 @media (max-width:640px){.brand .full{display:none}.brand .short{display:inline}}
 .brand .mark{flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}

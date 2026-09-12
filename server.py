@@ -49,7 +49,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.10.0"
+VERSION = "1.10.1"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))

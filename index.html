@@ -1699,6 +1699,9 @@ function pickRow(c) {
   b.onclick = () => { if (b.classList.contains('added')) return; favs.push(Object.assign({ id: uid() }, c)); saveFavs(); b.classList.add('added'); plus.textContent = '✓'; toast('Added ' + c.label, 'ok'); };
   return b;
 }
+const REMOTE_COMMANDS = ['up', 'down', 'left', 'right', 'select', 'menu', 'home', 'home_hold', 'top_menu',
+  'play', 'pause', 'play_pause', 'next', 'previous', 'skip_forward', 'skip_backward', 'volume_up',
+  'volume_down', 'control_center', 'screensaver', 'suspend', 'wakeup', 'guide', 'channel_up', 'channel_down'];
 const KIND_HINTS = {
   app: 'Bundle ID, e.g. com.netflix.Netflix. The "On this TV" tab shows the exact IDs installed.',
   link: 'A deep link the TV app understands. Examples: https://www.netflix.com/title/80057281 · https://www.youtube.com/watch?v=VIDEO_ID · https://tv.apple.com/us/show/… · disneyplus://… Whether it opens depends on that app.',
@@ -1731,6 +1734,16 @@ function favForm(existing, index) {
     const label = inLabel.value.trim(), value = inVal.value.trim();
     if (!label) { toast('Give it a name', 'err'); inLabel.focus(); return; }
     if (!value) { toast('Value is required', 'err'); inVal.focus(); return; }
+    const looksLikeUrl = /^[a-z][\w+.-]*:\/\//i.test(value) || /^www\./i.test(value);
+    const looksLikeBundle = /^[a-z0-9]+(\.[a-z0-9-]+){2,}$/i.test(value);
+    if (kind === 'cmd' && !REMOTE_COMMANDS.includes(value)) {
+      const suggest = looksLikeUrl ? 'Link' : looksLikeBundle ? 'App' : 'Text';
+      toast(`"${value.slice(0, 28)}${value.length > 28 ? '…' : ''}" is not a remote button. Switch Type to ${suggest}.`, 'err');
+      const b = $(`[data-k="${suggest === 'Link' ? 'link' : suggest === 'App' ? 'app' : 'text'}"]`, d); if (b) b.focus();
+      return;
+    }
+    if (kind === 'app' && looksLikeUrl) { toast('That is a web address. Switch Type to Link.', 'err'); return; }
+    if (kind === 'link' && !looksLikeUrl) { toast('A Link needs a full web address starting with https://', 'err'); inVal.focus(); return; }
     const item = { id: f.id || uid(), label, icon: inIcon.value.trim(), color: f.color, kind, value };
     if (existing != null && index != null) favs[index] = item; else favs.push(item);
     saveFavs(); closeSheet(); toast(existing ? 'Saved' : 'Added ' + label, 'ok');

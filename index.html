@@ -1538,6 +1538,15 @@ async function openParty() {
       const q = document.createElement('div'); q.className = 'qr'; box.appendChild(q);
       try { q.innerHTML = await (await fetch('/api/party/qr')).text(); } catch { q.textContent = 'QR unavailable'; }
       const u = document.createElement('div'); u.className = 'party-url'; u.textContent = p.url; box.appendChild(u);
+      if (p.stableUrl) {
+        const s2 = document.createElement('div'); s2.className = 'hint'; s2.style.textAlign = 'center'; s2.style.marginTop = '10px';
+        s2.innerHTML = 'Adding it to a Home Screen? Use this address instead, so it keeps working when your router gives this Mac a new one:';
+        box.appendChild(s2);
+        const su = document.createElement('div'); su.className = 'party-url'; su.textContent = p.stableUrl; box.appendChild(su);
+        const cp = document.createElement('button'); cp.className = 'btn sm'; cp.textContent = 'Copy stable link'; cp.style.marginTop = '8px';
+        cp.onclick = async () => { try { await navigator.clipboard.writeText(p.stableUrl); toast('Copied', 'ok'); } catch { toast('Select and copy the address'); } };
+        box.appendChild(cp);
+      }
       const h = document.createElement('div'); h.className = 'hint'; h.style.textAlign = 'center'; h.textContent = 'Phones need to be on the same Wi-Fi as this Mac, and this Mac needs to stay awake.'; box.appendChild(h);
       const base = p.url.split('/?')[0], tok = p.url.split('party=')[1];
       const s = document.createElement('div'); s.style.textAlign = 'left'; s.innerHTML = `<div class="sec" style="margin-top:18px">Siri &amp; Shortcuts</div><div class="hint">In the Shortcuts app, add a <b>Get Contents of URL</b> action with one of these, then give the shortcut a name like "Netflix on the big TV". From this Mac you can drop the <code>?party=…</code> part.</div><div class="list" style="margin-top:8px"></div>`;

@@ -49,7 +49,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.9.2"
+VERSION = "1.9.3"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -315,6 +315,15 @@ class State:
     def party_token(self):
         return self.prefs.get("party_token")
 
+    def party_host(self):
+        """The Mac's Bonjour name, which survives the router changing its IP."""
+        try:
+            name = subprocess.run(["scutil", "--get", "LocalHostName"], capture_output=True,
+                                  text=True, timeout=3).stdout.strip()
+            return f"{name}.local" if name else None
+        except Exception:
+            return None
+
     def party_url(self, port):
         ips = []
         try:
@@ -328,6 +337,10 @@ class State:
         ips.sort(key=lambda x: (not x.startswith("192.168."), not x.startswith("10."), x))
         tok = self.party_token()
         return f"http://{ips[0]}:{port}/?party={tok}" if ips and tok else None
+
+    def party_url_stable(self, port):
+        tok, host = self.party_token(), self.party_host()
+        return f"http://{host}:{port}/?party={tok}" if host and tok else None
 
     def load_prefs(self):
         try:
@@ -1801,7 +1814,9 @@ def routes(state: State):
 
     @r.get("/api/party")
     async def party_get(req):
-        return web.json_response({"ok": True, "on": bool(state.party_token()), "url": state.party_url(req.url.port or PORT)})
+        port = req.url.port or PORT
+        return web.json_response({"ok": True, "on": bool(state.party_token()),
+                                  "url": state.party_url(port), "stableUrl": state.party_url_stable(port)})
 
     @r.post("/api/party")
     async def party_set(req):
@@ -1850,6 +1865,9 @@ def routes(state: State):
     return r
 
 
+PUBLIC_ASSETS = {"/apple-touch-icon.png", "/apple-touch-icon-precomposed.png",
+                 "/icon-512.png", "/manifest.webmanifest", "/favicon.ico"}
+
 KID_BLOCKED = {"/api/prefs", "/api/quit", "/api/update/apply", "/api/text", "/api/search", "/api/party", "/api/forget",
                "/api/pair/start", "/api/pair/finish", "/api/disconnect", "/api/launch", "/api/sleep", "/api/history/remove"}
 
@@ -1862,6 +1880,8 @@ async def party_gate(request, handler):
         local = ipaddress.ip_address(peer).is_loopback
     except ValueError:
         local = peer in ("localhost", "")
+    if request.path in PUBLIC_ASSETS and request.method == "GET":
+        return await handler(request)          # artwork only; nothing private here
     state = request.app["state"]
     if state.prefs.get("kid_mode") and request.method == "POST" and request.path in KID_BLOCKED:
         return web.json_response({"ok": False, "error": "Kid mode is on. Unlock it with the PIN first."}, status=423)

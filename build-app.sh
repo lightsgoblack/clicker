@@ -21,6 +21,17 @@ rm -rf build Clicker.spec
 ARCH=$(uname -m)
 # Signing: a "Developer ID Application" identity in the keychain means a real signature +
 # notarization (no "Open Anyway" for anyone). Otherwise ad-hoc, which still runs on Apple Silicon.
+# xcode-select can point at an Xcode that is not installed, which breaks `xcrun`.
+# These tools ship with the Command Line Tools too, so find them directly.
+find_tool() {
+  for c in "/Library/Developer/CommandLineTools/usr/bin/$1" "/usr/bin/$1" "$(command -v "$1" 2>/dev/null)"; do
+    [ -x "$c" ] && { echo "$c"; return; }
+  done
+  xcrun --find "$1" 2>/dev/null
+}
+NOTARYTOOL=$(find_tool notarytool)
+STAPLER=$(find_tool stapler)
+
 SIGN_ID="${CLICKER_SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null | grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"')}"
 NOTARY_PROFILE="${CLICKER_NOTARY_PROFILE:-clicker-notary}"
 if [ -n "$SIGN_ID" ]; then
@@ -28,10 +39,10 @@ if [ -n "$SIGN_ID" ]; then
   codesign --force --deep --options runtime --timestamp --entitlements mac/entitlements.plist --sign "$SIGN_ID" dist/Clicker.app
   codesign --verify --deep --strict dist/Clicker.app && echo "signature ok"
   ditto -c -k --keepParent dist/Clicker.app "dist/Clicker-mac-$ARCH.zip"
-  if xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
+  if [ -n "$NOTARYTOOL" ] && "$NOTARYTOOL" history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
     echo "Notarizing (this takes a few minutes)…"
-    xcrun notarytool submit "dist/Clicker-mac-$ARCH.zip" --keychain-profile "$NOTARY_PROFILE" --wait
-    xcrun stapler staple dist/Clicker.app
+    "$NOTARYTOOL" submit "dist/Clicker-mac-$ARCH.zip" --keychain-profile "$NOTARY_PROFILE" --wait
+    "$STAPLER" staple dist/Clicker.app
     rm -f "dist/Clicker-mac-$ARCH.zip"; ditto -c -k --keepParent dist/Clicker.app "dist/Clicker-mac-$ARCH.zip"
     echo "Notarized and stapled."
   else

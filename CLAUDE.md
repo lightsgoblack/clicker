@@ -43,6 +43,8 @@ Display name is "Colin's Cool Crazy Couch Computer Clicker" (short: C⁶ Clicker
 - **Fixed-position trap:** a CSS `filter`/`transform`/`animation` on `body` makes every `position:fixed` child position against the body instead of the viewport. The VHS theme did this and pushed all sheets off screen. Theme decorations now live in `#fx` (a fixed layer outside `.wrap`), and VHS filters `.wrap`, not `body`.
 - **Mobile:** sheets are bottom-anchored with a sticky `.top` bar so Close is always reachable; all 19 themes verified at 375x812 for overflow, sheet fit, and close-target size. The Browser pane throttles timers when hidden, so measure layout synchronously instead of awaiting timeouts.
 
+- **Notarization works (2026-09-12).** Developer ID Application: Colin Robinson (VNJA6Y7DCH) in the login keychain (import to login, not iCloud: error -25294); codesign needed a one-time Always Allow with the Mac login password. Notary profile `clicker-notary`. `xcode-select` points at a missing Xcode, so `xcrun notarytool` fails; `build-app.sh` calls `/Library/Developer/CommandLineTools/usr/bin/notarytool` and `stapler` directly. Apple's queue took 26 min on the first submission and the client-side wait timed out; check with `notarytool info <id>` rather than assuming failure.
+
 ## Verify
 - `.venv/bin/python server.py --demo --no-open` then drive the UI in a browser; `/api/demo/log` shows every command the fake device received.
 - Real-device behavior (does Netflix honor the link, does the TV respond to volume) cannot be verified headlessly. Say so.

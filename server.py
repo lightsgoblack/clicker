@@ -49,7 +49,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.9.3"
+VERSION = "1.10.0"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -313,7 +313,16 @@ class State:
 
     # ---- party mode ----
     def party_token(self):
-        return self.prefs.get("party_token")
+        """The live code, or None when party mode is off. The code itself is kept
+        across off/on so shortcuts people already saved keep working."""
+        return self.prefs.get("party_token") if self.prefs.get("party_on") else None
+
+    def party_code(self):
+        code = self.prefs.get("party_token")
+        if not code:
+            code = secrets.token_urlsafe(12)
+            self.prefs["party_token"] = code
+        return code
 
     def party_host(self):
         """The Mac's Bonjour name, which survives the router changing its IP."""
@@ -1821,11 +1830,14 @@ def routes(state: State):
     @r.post("/api/party")
     async def party_set(req):
         body = await req.json()
-        if body.get("on"):
-            if not state.party_token():
-                state.prefs["party_token"] = secrets.token_urlsafe(12)
+        if body.get("rotate"):
+            state.prefs["party_token"] = secrets.token_urlsafe(12)
+            state.prefs["party_on"] = True
+        elif body.get("on"):
+            state.party_code()              # create one the first time only
+            state.prefs["party_on"] = True
         else:
-            state.prefs.pop("party_token", None)
+            state.prefs["party_on"] = False  # closed, but the same code works when reopened
         state.save_prefs()
         return await party_get(req)
 

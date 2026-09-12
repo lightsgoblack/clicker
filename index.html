@@ -1528,11 +1528,13 @@ async function kidOn() {
 
 // ---------- Party mode ----------
 async function openParty() {
-  const node = sheetTop('Party mode', 'Turn it on, and anyone on this Wi-Fi can scan the code to get the remote on their phone. No install, no pairing. Turn it off and every phone is locked out again.');
+  const node = sheetTop('Party mode', 'Turn it on, and anyone on this Wi-Fi can scan the code to get the remote on their phone. No install, no pairing. Turn it off and every phone is locked out; turn it back on and the same shortcuts work again. Use New code to lock out a phone for good.');
   const box = document.createElement('div'); box.style.textAlign = 'center'; node.appendChild(box); openSheet(node);
   const draw = async () => {
     let p; try { p = await api('party'); } catch (e) { box.innerHTML = `<div class="empty">${e.message}</div>`; return; }
     box.innerHTML = `<div class="seg" style="justify-content:center;margin-bottom:6px"><button data-v="0">Off</button><button data-v="1">On</button></div>`;
+    if (p.on) { const nc = document.createElement('button'); nc.className = 'btn sm danger'; nc.style.marginLeft = '8px'; nc.textContent = 'New code';
+      nc.title = 'Locks out every phone that used the old code'; nc.onclick = async () => { if (!confirm('Make a new code? Every phone and shortcut using the old one stops working.')) return; try { await api('party', { rotate: true }); toast('New code made', 'ok'); draw(); } catch (e) { toast(e.message, 'err'); } }; box.firstChild.appendChild(nc); }
     $$('button', box).forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === p.on); b.onclick = async () => { try { await api('party', { on: b.dataset.v === '1' }); toast(b.dataset.v === '1' ? 'Party mode on' : 'Party mode off, phones locked out'); draw(); } catch (e) { toast(e.message, 'err'); } }; });
     if (p.on && p.url) {
       const q = document.createElement('div'); q.className = 'qr'; box.appendChild(q);

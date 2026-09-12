@@ -49,7 +49,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.10.1"
+VERSION = "1.10.2"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -703,6 +703,27 @@ class DemoDevice:
         )
 
 
+
+
+# tvOS only opens a link if an installed app claims that exact scheme, and the big
+# streaming apps claim their own scheme rather than their https site. Verified on an
+# Apple TV 4K: https://www.youtube.com/... is refused, youtube://www.youtube.com/... opens.
+APPLETV_URL_SCHEMES = {"youtube.com": "youtube", "www.youtube.com": "youtube", "m.youtube.com": "youtube",
+                       "youtu.be": "youtube"}
+
+
+def appletv_url(target):
+    """Rewrite a normal web link into the scheme the TV app actually answers to."""
+    if not target.startswith(("http://", "https://")):
+        return target
+    u = urllib.parse.urlparse(target)
+    scheme = APPLETV_URL_SCHEMES.get(u.netloc.lower())
+    if not scheme:
+        return target
+    if u.netloc.lower() == "youtu.be":                       # short form carries the id in the path
+        vid = u.path.strip("/").split("/")[0]
+        return f"youtube://www.youtube.com/watch?v={vid}" if vid else target
+    return f"{scheme}://{u.netloc}{u.path}" + (f"?{u.query}" if u.query else "")
 
 
 # ---------------------------------------------------------------------------
@@ -1611,7 +1632,7 @@ def routes(state: State):
         if not target:
             return json_error("Nothing to launch.")
         try:
-            await atv.apps.launch_app(target)
+            await atv.apps.launch_app(target if isinstance(atv, RokuDevice) else appletv_url(target))
             # A deep link tells us what they opened, which apps like Netflix never report.
             label = (body.get("label") or "").strip()
             if label and target.startswith(("http://", "https://")):
@@ -1624,7 +1645,11 @@ def routes(state: State):
         except exceptions.NotSupportedError as e:
             return json_error(str(e) or "Launching apps needs Companion pairing.", 501)
         except Exception as e:
-            return json_error(f"Launch failed: {e}", 500)
+            msg = f"Launch failed: {e}"
+            if "Open URL failed" in str(e) and target.startswith(("http://", "https://")):
+                msg = ("The TV would not open that link. tvOS only opens a web address if an app claims it. "
+                       "Try the app's own form, like youtube://www.youtube.com/watch?v=ID")
+            return json_error(msg, 500)
         return web.json_response({"ok": True})
 
     @r.post("/api/nowtag")

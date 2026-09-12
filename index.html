@@ -1704,7 +1704,7 @@ const REMOTE_COMMANDS = ['up', 'down', 'left', 'right', 'select', 'menu', 'home'
   'volume_down', 'control_center', 'screensaver', 'suspend', 'wakeup', 'guide', 'channel_up', 'channel_down'];
 const KIND_HINTS = {
   app: 'Bundle ID, e.g. com.netflix.Netflix. The "On this TV" tab shows the exact IDs installed.',
-  link: 'A deep link the TV app understands. Examples: https://www.netflix.com/title/80057281 · https://www.youtube.com/watch?v=VIDEO_ID · https://tv.apple.com/us/show/… · disneyplus://… Whether it opens depends on that app.',
+  link: 'A deep link the TV app understands. YouTube links are translated for you. Other apps often need their own scheme rather than a web address, like disneyplus://… Whether it opens is up to that app.',
   text: 'Text to type into whatever field is focused on the TV.',
   cmd: 'One remote button: up, down, left, right, select, menu, home, home_hold, top_menu, play, pause, play_pause, next, previous, skip_forward, skip_backward, volume_up, volume_down, control_center, screensaver, suspend, wakeup.',
   seq: 'One step per line: a button name (add x3 to repeat), "wait 800", "launch com.plexapp.plex", "type hello". Example:\nhome\nwait 700\nlaunch com.netflix.Netflix',

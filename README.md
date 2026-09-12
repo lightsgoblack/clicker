@@ -55,7 +55,7 @@ Nineteen of them. Dark (default) and Light. Five for when the lights are off: Ac
 
 **Apple Silicon Mac (2020 or later):** download the latest `Clicker-mac-arm64.zip` from the [Releases page](https://github.com/lightsgoblack/clicker/releases/latest), double-click the zip, and drag `Clicker` into your Applications folder. Python is included; nothing else to install.
 
-If macOS says it cannot verify the app, click **Done**, open **System Settings, Privacy & Security**, scroll down, and click **Open Anyway** next to Clicker. One-time step. Releases built with a Developer ID certificate are notarized and skip this entirely (see `build-app.sh`).
+Releases are signed with a Developer ID certificate and notarized by Apple, so Clicker opens with no security warning.
 
 **Intel Mac, or if you would rather not click through that warning:** paste this one line into Terminal (`Cmd+Space`, type Terminal, Return):
 

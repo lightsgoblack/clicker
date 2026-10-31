@@ -1909,9 +1909,47 @@ KID_BLOCKED = {"/api/prefs", "/api/quit", "/api/update/apply", "/api/text", "/ap
                "/api/pair/start", "/api/pair/finish", "/api/disconnect", "/api/launch", "/api/sleep", "/api/history/remove"}
 
 
+def host_ok(host):
+    """True for the names this server is really reached by: localhost, an IP, the Mac's Bonjour .local name,
+    or a bare one-word LAN name. A DNS-rebinding page reaches 127.0.0.1 under its own domain, so it stops here."""
+    host = (host or "").strip().lower()
+    if host.startswith("["):
+        host = host[1:].split("]", 1)[0]
+    elif host.count(":") == 1:
+        host = host.rsplit(":", 1)[0]
+    if not host:
+        return False
+    if host == "localhost" or host.endswith(".local") or "." not in host:
+        return True
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return False
+
+
+def cross_site(request):
+    """True when another website made the browser send this. Localhost is trusted, so without this any page open
+    on the Mac could POST to /api/* (or load /api/do/* as an image) and drive the TV. Browsers label such
+    requests with Sec-Fetch-Site and an Origin; Shortcuts and curl send neither, so they still work."""
+    if request.headers.get("Sec-Fetch-Site", "").lower() in ("cross-site", "same-site"):
+        return True
+    origin = request.headers.get("Origin")
+    if origin is None:
+        return False
+    if origin == "null":
+        return True
+    return urllib.parse.urlsplit(origin).netloc.lower() != (request.host or "").lower()
+
+
 @web.middleware
 async def party_gate(request, handler):
-    """Localhost always works. Other devices on the Wi-Fi need party mode on and the scanned token."""
+    """Localhost always works. Other devices on the Wi-Fi need party mode on and the scanned token.
+    Either way, the request must name this machine in Host and must not come from another website."""
+    if not host_ok(request.host):
+        return web.Response(text="Unknown host.", status=421)
+    if request.path.startswith("/api/") and cross_site(request):
+        return web.json_response({"ok": False, "error": "Requests from other websites are blocked."}, status=403)
     peer = request.remote or ""
     try:
         local = ipaddress.ip_address(peer).is_loopback

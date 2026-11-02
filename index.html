@@ -575,6 +575,10 @@ html[data-phone] .grid{grid-template-columns:1fr}
 :root[data-layout="classic"] .layout-grid{display:none}
 .kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
 .kgrid .key{height:60px;flex:none}
+/* Mute exists on Samsung and Roku only; in the grid it takes the screensaver slot, which they lack */
+.key[data-cmd="mute"]{display:none}
+html[data-kind="samsung"] .key[data-cmd="mute"],html[data-kind="roku"] .key[data-cmd="mute"]{display:inline-flex}
+html[data-kind="samsung"] .kgrid .key[data-cmd="screensaver"],html[data-kind="roku"] .kgrid .key[data-cmd="screensaver"]{display:none}
 
 /* Now playing */
 .np{display:flex;gap:12px;align-items:center;min-height:52px}
@@ -638,6 +642,8 @@ html[data-phone] .grid{grid-template-columns:1fr}
 @media (min-width:600px){.scrim{align-items:center;padding:20px}}
 .sheet{background:var(--surface);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:var(--sheet-max,92dvh);overflow:auto;padding:0 18px max(18px,var(--safe-bottom-z,env(safe-area-inset-bottom)));box-shadow:var(--shadow);overscroll-behavior:contain}
 .sheet>div:first-child>.top{position:sticky;top:0;z-index:3;background:var(--surface);padding:18px 0 10px;margin-bottom:6px}
+/* text scrolled under the pinned header fades out instead of being sliced by its edge */
+.sheet>div:first-child>.top::after{content:"";position:absolute;left:0;right:0;top:100%;height:28px;background:linear-gradient(var(--surface) 25%,transparent);pointer-events:none}
 @media (min-width:600px){.sheet{border-radius:22px}}
 .sheet h3{margin:0 0 4px;font-size:18px}
 .sheet .top{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-top:18px}
@@ -714,7 +720,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 0 0}
     <button class="btn sm primary" id="updNow" style="margin-left:0">Update now</button>
   </div>
   <div class="banner" id="banner" hidden>
-    <span id="bannerText">Not connected to an Apple TV.</span>
+    <span id="bannerText">Not connected to a TV.</span>
     <button class="btn sm primary" id="bannerBtn">Choose device</button>
   </div>
 
@@ -743,7 +749,8 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 0 0}
             <button class="key" data-cmd="skip_forward" title="Forward 10 seconds"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
           </div>
           <div class="row">
-            <button class="key" data-cmd="volume_down" data-repeat="1" title="Volume down"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M23 9l-6 6M17 9l6 6"/></svg><span class="sub">Vol −</span></button>
+            <button class="key" data-cmd="volume_down" data-repeat="1" title="Volume down"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg><span class="sub">Vol −</span></button>
+            <button class="key" data-cmd="mute" title="Mute the TV"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M23 9l-6 6M17 9l6 6"/></svg><span class="sub">Mute</span></button>
             <button class="key" data-cmd="volume_up" data-repeat="1" title="Volume up"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg><span class="sub">Vol +</span></button>
           </div>
           <div class="row">
@@ -757,7 +764,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 0 0}
           <button class="key danger" data-cmd="power" title="Power"><svg viewBox="0 0 24 24"><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2v10"/></svg></button>
           <button class="key" data-cmd="home" data-hold="home_hold" title="TV / Home"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg></button>
           <button class="key" data-cmd="menu" data-hold="top_menu" title="Back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-          <button class="key" data-cmd="volume_down" data-repeat="1" title="Volume down"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M23 9l-6 6M17 9l6 6"/></svg></button>
+          <button class="key" data-cmd="volume_down" data-repeat="1" title="Volume down"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></button>
           <button class="key" data-cmd="up" data-repeat="1" title="Up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
           <button class="key" data-cmd="volume_up" data-repeat="1" title="Volume up"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg></button>
           <button class="key" data-cmd="left" data-repeat="1" title="Left"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
@@ -766,6 +773,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 0 0}
           <button class="key" data-cmd="control_center" title="Control Center"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 9h10M7 15h6"/></svg></button>
           <button class="key" data-cmd="down" data-repeat="1" title="Down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
           <button class="key" data-cmd="screensaver" title="Screensaver"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+          <button class="key" data-cmd="mute" title="Mute the TV"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M23 9l-6 6M17 9l6 6"/></svg></button>
           <button class="key" data-cmd="previous" title="Previous"><svg viewBox="0 0 24 24"><path d="M19 20L9 12l10-8z"/><path d="M5 19V5"/></svg></button>
           <button class="key" data-cmd="play_pause" title="Play / Pause"><svg viewBox="0 0 24 24"><path d="M5 4l8 8-8 8z"/><path d="M16 4v16M20 4v16"/></svg></button>
           <button class="key" data-cmd="next" title="Next"><svg viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/></svg></button>
@@ -786,7 +794,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 0 0}
           <div class="art" id="npArt"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg></div>
           <div class="meta">
             <div class="title" id="npTitle">Nothing playing</div>
-            <div class="sub" id="npSub">Connect to an Apple TV to see what is on.</div>
+            <div class="sub" id="npSub">Connect to a TV to see what is on.</div>
             <div class="bar" id="npBar" hidden><i id="npFill"></i></div>
           </div>
         </div>
@@ -813,7 +821,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 0 0}
           <button class="btn primary" type="submit">Send</button>
           <button class="btn" type="button" id="typeClear" title="Clear the field on the TV">Clear</button>
         </form>
-        <div class="hint">Works when a text field is focused on the Apple TV (search boxes, sign-in screens). Needs the "apps" pairing.</div>
+        <div class="hint">Works when a text field is focused on the TV (search boxes, sign-in screens). Apple TV needs the "apps" pairing.</div>
         <form class="type" id="findForm" style="margin-top:12px">
           <input id="findInput" placeholder="Find on TV: a show, a movie, a person…" autocomplete="off" autocapitalize="off">
           <button class="btn primary" type="submit">Find</button>
@@ -822,7 +830,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:26px 0 0}
       </section>
     </div>
   </div>
-  <footer>Colossally convenient couch control, courtesy of Colin. Runs on this Mac, talks to the Apple TV over your Wi-Fi, nothing leaves your network. Press <kbd>?</kbd> for keyboard shortcuts.</footer>
+  <footer>Colossally convenient couch control, courtesy of Colin. Runs on this Mac, talks to your TV over your Wi-Fi, nothing leaves your network. Press <kbd>?</kbd> for keyboard shortcuts.</footer>
 </div>
 
 <div id="fx" aria-hidden="true"></div>
@@ -1029,7 +1037,7 @@ const KEYS = {
   ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
   Enter: 'select', Backspace: 'menu', Escape: 'menu', ' ': 'play_pause',
   h: 'home', H: 'home', '[': 'skip_backward', ']': 'skip_forward', ',': 'previous', '.': 'next',
-  '-': 'volume_down', '_': 'volume_down', '=': 'volume_up', '+': 'volume_up', c: 'control_center', C: 'control_center', p: 'power', P: 'power',
+  '-': 'volume_down', '_': 'volume_down', '=': 'volume_up', '+': 'volume_up', c: 'control_center', C: 'control_center', p: 'power', P: 'power', m: 'mute', M: 'mute',
 };
 document.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
@@ -1056,6 +1064,7 @@ function playingCtx(st) {
 }
 function renderStatus(st) {
   S.status = st; S.connected = !!st.connected;
+  if (st.connected) html.dataset.kind = st.kind || 'appletv'; else delete html.dataset.kind;
   $('#aboutBtn').hidden = !playingCtx(st);
   $('#tagBtn').hidden = !(S.connected && st.appHidesMeta && st.playing && ['playing', 'paused'].includes(st.playing.state) && !st.tagged);
   renderUpdate(st);
@@ -1095,7 +1104,7 @@ function renderStatus(st) {
     else $('#npSub').textContent = 'Nothing playing right now.';
     $('#npBar').hidden = true; art.classList.toggle('live', !!(p && p.state === 'playing'));
   } else {
-    $('#npTitle').textContent = 'Nothing playing'; $('#npSub').textContent = 'Connect to an Apple TV to see what is on.'; $('#npBar').hidden = true; art.classList.remove('live');
+    $('#npTitle').textContent = 'Nothing playing'; $('#npSub').textContent = 'Connect to a TV to see what is on.'; $('#npBar').hidden = true; art.classList.remove('live');
   }
 }
 async function refresh() {
@@ -1299,7 +1308,7 @@ function sheetTop(title, sub) {
 
 // Devices sheet
 async function openDevices() {
-  const node = sheetTop('Apple TVs on your network', 'Pair once with the PIN shown on the TV. "Remote" pairing drives navigation and playback. "Apps" pairing adds app launching, typing, and power.');
+  const node = sheetTop('TVs on your network', 'Apple TV: pair once with the PIN shown on the TV. "Remote" drives the buttons, "Apps" adds app launching, typing, and power. Samsung: press Allow on the TV the first time you connect. Roku: nothing to pair.');
   const listEl = document.createElement('div'); listEl.className = 'list'; listEl.style.maxHeight = 'none';
   const scanBtn = document.createElement('button'); scanBtn.className = 'btn sm'; scanBtn.textContent = 'Scan again';
   scanBtn.style.marginBottom = '10px'; node.appendChild(scanBtn); node.appendChild(listEl);
@@ -1309,7 +1318,7 @@ async function openDevices() {
     try {
       const { devices } = await api('scan');
       listEl.innerHTML = '';
-      if (!devices.length) listEl.innerHTML = '<div class="empty">No Apple TV found. Make sure it is awake and on the same Wi-Fi as this Mac, then scan again.</div>';
+      if (!devices.length) listEl.innerHTML = '<div class="empty">No TVs found. Make sure the TV is on and on the same Wi-Fi as this Mac, then scan again.</div>';
       devices.forEach(d => listEl.appendChild(deviceRow(d)));
     } catch (e) { listEl.innerHTML = `<div class="empty">${e.message}</div>`; }
     scanBtn.disabled = false;
@@ -1319,6 +1328,7 @@ async function openDevices() {
 function deviceRow(d) {
   const row = document.createElement('div'); row.className = 'dev';
   if (d.kind === 'roku') return rokuRow(d, row);
+  if (d.kind === 'samsung') return samsungRow(d, row);
   const airplay = d.services.find(s => s.protocol === 'airplay'), companion = d.services.find(s => s.protocol === 'companion');
   const isCur = S.connected && S.status.device && S.status.device.identifier === d.identifier;
   row.innerHTML = `<div class="name"><span></span><small></small>${isCur ? '<span class="badge ok">Connected</span>' : ''}</div><div class="badges"></div><div class="acts"></div><div class="pinbox"></div>`;
@@ -1346,6 +1356,18 @@ function rokuRow(d, row) {
   const h = document.createElement('div'); h.className = 'hint';
   h.textContent = 'If buttons do nothing, the TV is blocking apps. On the Roku: Settings, System, Advanced system settings, Control by mobile apps, Network access, choose Permissive.';
   row.appendChild(h);
+  return row;
+}
+
+function samsungRow(d, row) {
+  const isCur = S.connected && S.status.device && S.status.device.identifier === d.identifier;
+  const allowed = d.services.some(s => s.paired);
+  row.innerHTML = `<div class="name"><span></span><small></small>${isCur ? '<span class="badge ok">Connected</span>' : ''}</div><div class="badges"><span class="badge${allowed ? ' ok' : ''}">Samsung &middot; ${allowed ? 'allowed' : 'press Allow on the TV'}</span></div><div class="acts"></div>`;
+  row.querySelector('.name span').textContent = d.name;
+  row.querySelector('.name small').textContent = `${d.model} \u00b7 ${d.address}`;
+  const acts = row.querySelector('.acts');
+  if (!isCur) { const b = document.createElement('button'); b.className = 'btn sm primary'; b.textContent = 'Connect'; b.onclick = () => { if (!allowed) toast('Look at the TV and choose Allow'); connect(d); }; acts.appendChild(b); }
+  if (!allowed) { const h = document.createElement('div'); h.className = 'hint'; h.textContent = 'The first time, the TV asks whether to allow Clicker. Press Allow with the Samsung remote within 30 seconds.'; row.appendChild(h); }
   return row;
 }
 
@@ -1708,12 +1730,12 @@ function pickRow(c) {
 }
 const REMOTE_COMMANDS = ['up', 'down', 'left', 'right', 'select', 'menu', 'home', 'home_hold', 'top_menu',
   'play', 'pause', 'play_pause', 'next', 'previous', 'skip_forward', 'skip_backward', 'volume_up',
-  'volume_down', 'control_center', 'screensaver', 'suspend', 'wakeup', 'guide', 'channel_up', 'channel_down'];
+  'volume_down', 'mute', 'control_center', 'screensaver', 'suspend', 'wakeup', 'guide', 'channel_up', 'channel_down'];
 const KIND_HINTS = {
   app: 'Bundle ID, e.g. com.netflix.Netflix. The "On this TV" tab shows the exact IDs installed.',
   link: 'A deep link the TV app understands. YouTube links are translated for you. Other apps often need their own scheme rather than a web address, like disneyplus://… Whether it opens is up to that app.',
   text: 'Text to type into whatever field is focused on the TV.',
-  cmd: 'One remote button: up, down, left, right, select, menu, home, home_hold, top_menu, play, pause, play_pause, next, previous, skip_forward, skip_backward, volume_up, volume_down, control_center, screensaver, suspend, wakeup.',
+  cmd: 'One remote button: up, down, left, right, select, menu, home, home_hold, top_menu, play, pause, play_pause, next, previous, skip_forward, skip_backward, volume_up, volume_down, mute, control_center, screensaver, suspend, wakeup.',
   seq: 'One step per line: a button name (add x3 to repeat), "wait 800", "launch com.plexapp.plex", "type hello". Example:\nhome\nwait 700\nlaunch com.netflix.Netflix',
 };
 function favForm(existing, index) {
@@ -1790,6 +1812,7 @@ function openSettings() {
       <span><kbd>[</kbd> <kbd>]</kbd></span><span>Skip back / forward 10s</span>
       <span><kbd>,</kbd> <kbd>.</kbd></span><span>Previous / Next</span>
       <span><kbd>-</kbd> <kbd>=</kbd></span><span>Volume down / up</span>
+      <span><kbd>M</kbd></span><span>Mute (Samsung and Roku)</span>
       <span><kbd>C</kbd></span><span>Control Center</span>
       <span><kbd>P</kbd></span><span>Power (sleep / wake)</span>
       <span><kbd>T</kbd></span><span>Jump to "Type on TV"</span>

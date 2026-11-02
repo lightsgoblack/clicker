@@ -16,6 +16,7 @@ Usage:
 
 import argparse
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -25,6 +26,7 @@ import platform
 import secrets
 import re
 import socket
+import ssl
 import shutil
 import signal
 import subprocess
@@ -49,7 +51,7 @@ from pyatv.storage.file_storage import FileStorage
 
 # Frozen by PyInstaller? Data files live next to the bundled interpreter.
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-VERSION = "1.10.3"
+VERSION = "1.11.0"
 APP_VERSION = os.environ.get("CLICKER_VERSION_OVERRIDE") or VERSION  # override is for updater tests only
 REPO = "lightsgoblack/clicker"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -80,6 +82,7 @@ COMMANDS = {
     "skip_backward": ("skip_backward", False),
     "volume_up": ("volume_up", False),
     "volume_down": ("volume_down", False),
+    "mute": ("mute", False),
     "control_center": ("control_center", False),
     "screensaver": ("screensaver", False),
     "guide": ("guide", False),
@@ -125,7 +128,7 @@ class State:
         self.atv = None
         self.config = None
         self.configs = {}  # identifier -> BaseConfig from last scan
-        self.rokus = {}    # identifier -> RokuDevice from last scan
+        self.rokus = {}    # identifier -> RokuDevice or SamsungDevice from last scan
         self.pairing = None
         self.pairing_protocol = None
         self.prefs_path = DATA_DIR / "prefs.json"
@@ -357,6 +360,10 @@ class State:
         except Exception:
             return {}
 
+    def save_samsung_token(self, identifier, token):
+        self.prefs.setdefault("samsung_tokens", {})[identifier] = token
+        self.save_prefs()
+
     def save_prefs(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.prefs_path.write_text(json.dumps(self.prefs, indent=2))
@@ -380,12 +387,19 @@ class State:
         if isinstance(configs, list):
             for c in configs:
                 protos = {s.protocol for s in c.services}
+                raw = (getattr(c.device_info, "raw_model", None) or "") if c.device_info else ""
+                if re.match(r"(Mac|iMac|MacBook)", raw):
+                    continue    # Macs advertise AirPlay too, but they are not TVs
                 if Protocol.Companion in protos or Protocol.MRP in protos or Protocol.DMAP in protos:
                     keep.append(c)
         elif isinstance(configs, Exception):
             log.info("Apple TV scan failed: %s", configs)
         if isinstance(rokus, list):
             self.rokus = {d.identifier: d for d in rokus}
+            for d in rokus:
+                if isinstance(d, SamsungDevice):
+                    d.token = self.prefs.get("samsung_tokens", {}).get(d.identifier)
+                    d.on_token = self.save_samsung_token
             keep += [d.config() for d in rokus]
         elif isinstance(rokus, Exception):
             log.info("Roku scan failed: %s", rokus)
@@ -422,15 +436,18 @@ class State:
             conf = self.configs.get(identifier)
         if conf is None:
             raise RuntimeError("Device not found on the network. Is it awake and on the same Wi-Fi?")
-        if str(identifier).startswith("roku:"):
+        if str(identifier).startswith(("roku:", "samsung:")):
             dev = self.rokus.get(identifier)
             if dev is None:
-                raise RuntimeError("That Roku is no longer answering. Scan again.")
+                raise RuntimeError("That TV is no longer answering. Scan again.")
             await self.disconnect()
-            try:
-                await dev.ecp("query/device-info")          # wake the session and learn if we are blocked
-            except RokuLimited:
-                pass                                        # connect anyway; the UI explains the setting
+            if isinstance(dev, SamsungDevice):
+                await dev.open()                            # first time: waits for Allow on the TV
+            else:
+                try:
+                    await dev.ecp("query/device-info")      # wake the session and learn if we are blocked
+                except RokuLimited:
+                    pass                                    # connect anyway; the UI explains the setting
             self.atv = dev
             self.config = conf
             self.prefs["last"] = identifier
@@ -742,7 +759,7 @@ ROKU_KEYS = {
     "menu": "Back", "home": "Home", "home_hold": "Home", "top_menu": "Home",
     "play": "Play", "pause": "Play", "play_pause": "Play",
     "next": "Fwd", "previous": "Rev", "skip_forward": "Fwd", "skip_backward": "InstantReplay",
-    "volume_up": "VolumeUp", "volume_down": "VolumeDown", "control_center": "Info",
+    "volume_up": "VolumeUp", "volume_down": "VolumeDown", "mute": "VolumeMute", "control_center": "Info",
     "channel_up": "ChannelUp", "channel_down": "ChannelDown", "guide": "Info",
     "suspend": "PowerOff", "wakeup": "PowerOn",
 }
@@ -1009,7 +1026,7 @@ async def _port_open(host, port=ROKU_PORT, timeout=0.9):
 
 
 async def roku_scan(timeout=6, extra_hosts=()):
-    """SSDP first (instant when it works), then a two-stage sweep: a cheap TCP knock on
+    """Finds Rokus and Samsung TVs. SSDP first (instant when it works), then a two-stage sweep: a cheap TCP knock on
     every local address, then a real query against whatever answered."""
     hosts = set(extra_hosts)
     try:
@@ -1038,7 +1055,9 @@ async def roku_scan(timeout=6, extra_hosts=()):
 
         async def knock(h):
             async with sem:
-                return await _port_open(h)
+                # one slot per host, both TV ports at once: Roku ECP and Samsung's remote API
+                r = await asyncio.gather(_port_open(h, ROKU_PORT), _port_open(h, SAMSUNG_PORT))
+                return h if any(r) else None
         results = await asyncio.gather(*(knock(h) for h in sweep), return_exceptions=True)
         hosts |= {r for r in results if isinstance(r, str)}
 
@@ -1049,11 +1068,387 @@ async def roku_scan(timeout=6, extra_hosts=()):
 
             async def one(h):
                 async with sem2:
-                    dev = await roku_probe(session, h)
-                    if dev and dev.identifier not in found:
-                        found[dev.identifier] = dev
+                    for probe in (roku_probe, samsung_probe):
+                        dev = await probe(session, h)
+                        if dev and dev.identifier not in found:
+                            found[dev.identifier] = dev
+                            break
             await asyncio.gather(*(one(h) for h in hosts), return_exceptions=True)
     return list(found.values())
+
+
+# ---------------------------------------------------------------------------
+# Samsung (Tizen, 2016 and later): a WebSocket remote on port 8002 that asks the
+# viewer to press Allow once, then hands us a token we keep in prefs. App status
+# and launching are plain HTTP on 8001. Power on is Wake-on-LAN. Same duck-typed
+# shape as RokuDevice, so every feature works unchanged.
+# ---------------------------------------------------------------------------
+
+SAMSUNG_PORT = 8001
+SAMSUNG_WS_PORT = 8002
+SAMSUNG_CLIENT_NAME = "Clicker"
+
+# Clicker command -> Samsung key. Samsung has no screensaver.
+SAMSUNG_KEYS = {
+    "up": "KEY_UP", "down": "KEY_DOWN", "left": "KEY_LEFT", "right": "KEY_RIGHT", "select": "KEY_ENTER",
+    "menu": "KEY_RETURN", "home": "KEY_HOME", "home_hold": "KEY_HOME", "top_menu": "KEY_HOME",
+    "play": "KEY_PLAY", "pause": "KEY_PAUSE", "stop": "KEY_STOP",
+    "next": "KEY_FF", "previous": "KEY_REWIND", "skip_forward": "KEY_FF", "skip_backward": "KEY_REWIND",
+    "volume_up": "KEY_VOLUP", "volume_down": "KEY_VOLDOWN", "mute": "KEY_MUTE",
+    "control_center": "KEY_MENU", "guide": "KEY_GUIDE", "channel_up": "KEY_CHUP", "channel_down": "KEY_CHDOWN",
+}
+
+# Tizen app ids, checked against a real TU7000 on 2026-11-02. Keyed by the Apple TV bundle id the
+# favorites catalog already uses, so existing favorites launch the same app on a Samsung.
+SAMSUNG_APPS = {
+    "com.netflix.Netflix": ("3201907018807", "Netflix"),
+    "com.google.ios.youtube": ("111299001912", "YouTube"),
+    "com.disney.disneyplus": ("3201901017640", "Disney+"),
+    "com.hulu.plus": ("3201601007625", "Hulu"),
+    "com.apple.TVWatchList": ("3201807016597", "Apple TV"),
+    "com.amazon.aiv.AIVApp": ("3201910019365", "Prime Video"),
+    "com.peacocktv.peacock": ("3202006020991", "Peacock"),
+    "com.spotify.client": ("3201606009684", "Spotify"),
+    "tubi": ("3201504001965", "Tubi"),
+}
+SAMSUNG_TO_BUNDLE = {sid: bundle for bundle, (sid, _) in SAMSUNG_APPS.items()}
+
+SAMSUNG_DENIED = ("The TV refused Clicker. On the Samsung remote: Settings, General, External Device Manager, "
+                  "Device Connection Manager, Device List, and set Clicker to Allow.")
+SAMSUNG_NO_ALLOW = "Nobody pressed Allow on the TV in time. Connect again and choose Allow on the TV."
+
+
+class SamsungError(RuntimeError):
+    pass
+
+
+class _SamsungRemote:
+    def __init__(self, dev):
+        self.dev = dev
+
+    def __getattr__(self, name):
+        if name not in COMMANDS:
+            raise AttributeError(name)
+
+        async def cmd(action=None):
+            if name == "suspend":
+                return await self.dev.power.turn_off()
+            if name == "wakeup":
+                return await self.dev.power.turn_on()
+            if name == "play_pause":
+                # Samsung has no toggle key, so alternate, starting with pause (you press it while watching).
+                self.dev.paused = not self.dev.paused
+                return await self.dev.key("KEY_PAUSE" if self.dev.paused else "KEY_PLAY")
+            key = SAMSUNG_KEYS.get(name)
+            if not key:
+                raise exceptions.NotSupportedError(f"Samsung TVs have no {name.replace('_', ' ')} button")
+            if action == InputAction.Hold:
+                await self.dev.key(key, "Press")
+                await asyncio.sleep(1.0)
+                return await self.dev.key(key, "Release")
+            await self.dev.key(key)
+        return cmd
+
+
+class _SamsungApps:
+    def __init__(self, dev):
+        self.dev = dev
+
+    async def app_list(self):
+        # The TV's own installed-apps call never answers on 2020 sets, so ask about each known app.
+        found = await asyncio.gather(*(self.dev.app_status(sid) for sid, _ in SAMSUNG_APPS.values()))
+        out = [SimpleNamespace(identifier=s["id"], name=s.get("name") or "") for s in found if s]
+        self.dev.installed = [a.identifier for a in out]
+        return out
+
+    async def launch_app(self, target):
+        meta = ""
+        if target.startswith(("http://", "https://", "youtube://")):
+            vid = None
+            u = urllib.parse.urlparse(target)
+            if "youtu.be" in u.netloc:
+                vid = u.path.strip("/")
+            elif "youtube" in u.netloc or target.startswith("youtube://"):
+                vid = urllib.parse.parse_qs(u.query).get("v", [None])[0]
+            if not vid:
+                raise exceptions.NotSupportedError("A Samsung TV opens apps, not web links. YouTube video links work.")
+            app_id, meta = SAMSUNG_APPS["com.google.ios.youtube"][0], f"v={vid}"
+        else:
+            app_id = SAMSUNG_APPS.get(target, (target, None))[0]
+        if not re.fullmatch(r"[\w.]{3,40}", app_id):
+            raise exceptions.NotSupportedError("That is not a Samsung app id.")
+        await self.dev.launch(app_id, meta)
+
+
+class _SamsungKeyboard:
+    def __init__(self, dev):
+        self.dev = dev
+
+    async def text_set(self, text):
+        # Only lands while the TV's on-screen keyboard is open, same as the Samsung phone app.
+        await self.dev.send({"method": "ms.remote.control", "params": {
+            "Cmd": base64.b64encode(text.encode()).decode(), "DataOfCmd": "base64", "TypeOfRemote": "SendInputString"}})
+
+    async def text_clear(self):
+        await self.dev.send({"method": "ms.remote.control", "params": {
+            "Cmd": base64.b64encode(b"").decode(), "DataOfCmd": "base64", "TypeOfRemote": "SendInputString"}})
+
+
+class _SamsungPower:
+    def __init__(self, dev):
+        self.dev = dev
+
+    @property
+    def power_state(self):
+        return PowerState.On if self.dev.power_mode == "on" else PowerState.Off
+
+    async def turn_on(self):
+        await self.dev.refresh_power()
+        if self.dev.power_mode == "on":
+            return
+        if self.dev.power_mode == "off":
+            # Fully asleep: Wake-on-LAN brings the network up (about 12 s on a TU7000) but leaves
+            # the screen in standby, so wait for it to answer and then press power.
+            wake_on_lan(self.dev.mac, self.dev.host)
+            for _ in range(25):
+                await asyncio.sleep(1)
+                await self.dev.refresh_power()
+                if self.dev.power_mode != "off":
+                    break
+            else:
+                raise SamsungError("The TV did not wake up. Check that Settings, General, Network, "
+                                   "Expert Settings, Power On with Mobile is turned on.")
+            self.dev._ws = None                  # the old socket died with the network
+        if self.dev.power_mode == "standby":
+            await self.dev.key("KEY_POWER")
+        self.dev.power_mode = "on"
+
+    async def turn_off(self):
+        await self.dev.refresh_power()
+        if self.dev.power_mode == "on":            # KEY_POWER toggles, so never send it to a TV that is already off
+            await self.dev.key("KEY_POWER")
+        self.dev.power_mode = "standby"
+
+
+class _SamsungMetadata:
+    def __init__(self, dev):
+        self.dev = dev
+        self._app = None
+
+    @property
+    def app(self):
+        return self._app
+
+    async def playing(self):
+        # Samsung reports nothing about what is playing, only which app is in front.
+        await self.dev.refresh_power()
+        self._app = None
+        if self.dev.power_mode == "on":
+            if self.dev.installed is None:
+                await self.dev.apps.app_list()
+            found = await asyncio.gather(*(self.dev.app_status(sid) for sid in self.dev.installed))
+            front = next((s for s in found if s and s.get("visible")), None)
+            if front:
+                self._app = SimpleNamespace(identifier=SAMSUNG_TO_BUNDLE.get(front["id"], front["id"]),
+                                            name=SAMSUNG_APPS.get(SAMSUNG_TO_BUNDLE.get(front["id"]), (0, front.get("name")))[1])
+            else:
+                self._app = SimpleNamespace(identifier=None, name="Home")
+        return SimpleNamespace(
+            device_state=DeviceState.Idle, title=None, artist=None, album=None, series_name=None,
+            season_number=None, episode_number=None, position=None, total_time=None,
+            media_type=MediaType.Unknown, content_identifier=None,
+        )
+
+
+def _broadcasts():
+    """The broadcast address of each local subnet. Mesh routers often drop 255.255.255.255."""
+    out = {"255.255.255.255"}
+    try:
+        import ifaddr
+        for a in ifaddr.get_adapters():
+            for ip in a.ips:
+                if isinstance(ip.ip, str) and 8 <= int(ip.network_prefix or 0) <= 30:
+                    net = ipaddress.ip_network(f"{ip.ip}/{ip.network_prefix}", strict=False)
+                    if net.is_private and not net.is_loopback:
+                        out.add(str(net.broadcast_address))
+    except Exception:
+        pass
+    return out
+
+
+def wake_on_lan(mac, host=None):
+    """Magic packet: 6 x 0xFF then the MAC 16 times, to every local broadcast and the TV itself."""
+    raw = bytes.fromhex(re.sub(r"[^0-9a-fA-F]", "", mac or ""))
+    if len(raw) != 6:
+        raise SamsungError("The TV is off and Clicker does not know its network address to wake it.")
+    packet = b"\xff" * 6 + raw * 16
+    targets = _broadcasts() | ({host} if host else set())
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        for _ in range(3):
+            for dst in targets:
+                for port in (9, 7):
+                    try:
+                        s.sendto(packet, (dst, port))
+                    except OSError:
+                        pass
+
+
+class SamsungDevice:
+    """A Samsung Tizen TV wearing the same shape as a pyatv device."""
+
+    def __init__(self, host, name, model, version, identifier, mac, power_mode="on"):
+        self.host, self.name, self.model, self.version = host, name, model, version
+        self.identifier, self.mac, self.power_mode = identifier, mac, power_mode
+        self.token = None
+        self.on_token = None           # State saves a new token through this
+        self.installed = None
+        self.paused = False
+        self.remote_control = _SamsungRemote(self)
+        self.apps = _SamsungApps(self)
+        self.keyboard = _SamsungKeyboard(self)
+        self.power = _SamsungPower(self)
+        self.metadata = _SamsungMetadata(self)
+        self.listener = None
+        self._session = None
+        self._ws = None
+        self._lock = asyncio.Lock()
+
+    def _http(self):
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6))
+        return self._session
+
+    async def rest(self, path, method="GET", timeout=2.5):
+        async with self._http().request(method, f"http://{self.host}:{SAMSUNG_PORT}/api/v2/{path}",
+                                        timeout=aiohttp.ClientTimeout(total=timeout)) as r:
+            body = await r.text()
+            return r.status, body
+
+    async def app_status(self, app_id):
+        try:
+            status, body = await self.rest(f"applications/{app_id}", timeout=2)
+            return json.loads(body) if status == 200 else None
+        except Exception:
+            return None
+
+    async def refresh_power(self):
+        try:
+            _, body = await self.rest("", timeout=2)
+            self.power_mode = (json.loads(body).get("device") or {}).get("PowerState", "on").lower()
+        except Exception:
+            self.power_mode = "off"    # not answering at all: fully off or unplugged
+
+    async def open(self, wait_allow=35):
+        """Connect the remote socket. The first time, the TV asks the viewer to Allow us."""
+        async with self._lock:
+            if self._ws is not None and not self._ws.closed:
+                return
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE            # the TV's certificate is self-signed
+            name = base64.b64encode(SAMSUNG_CLIENT_NAME.encode()).decode()
+            url = (f"wss://{self.host}:{SAMSUNG_WS_PORT}/api/v2/channels/samsung.remote.control?name={name}"
+                   + (f"&token={urllib.parse.quote(self.token)}" if self.token else ""))
+            try:
+                ws = await self._http().ws_connect(url, ssl=ctx, heartbeat=20)
+            except Exception as e:
+                raise SamsungError(f"Could not reach the Samsung TV: {e}")
+            try:
+                msg = await asyncio.wait_for(ws.receive_json(), timeout=wait_allow)
+            except Exception:
+                await ws.close()
+                raise SamsungError(SAMSUNG_NO_ALLOW)
+            event = msg.get("event")
+            if event == "ms.channel.unauthorized":
+                await ws.close()
+                raise SamsungError(SAMSUNG_DENIED)
+            if event != "ms.channel.connect":
+                await ws.close()
+                raise SamsungError(SAMSUNG_NO_ALLOW if event == "ms.channel.timeOut" else f"The TV said {event}.")
+            token = (msg.get("data") or {}).get("token")
+            if token and token != self.token:
+                self.token = token
+                if self.on_token:
+                    self.on_token(self.identifier, token)
+            self._ws = ws
+            asyncio.get_event_loop().create_task(self._drain(ws))
+
+    async def _drain(self, ws):
+        # Keep reading so pings are answered and a dropped socket is noticed.
+        try:
+            async for _ in ws:
+                pass
+        except Exception:
+            pass
+
+    async def send(self, payload):
+        for attempt in range(2):
+            await self.open(wait_allow=8 if self.token else 35)
+            try:
+                await self._ws.send_json(payload)
+                return
+            except Exception:
+                self._ws = None
+                if attempt:
+                    raise SamsungError("Lost the connection to the Samsung TV.")
+
+    async def key(self, key, cmd="Click"):
+        await self.send({"method": "ms.remote.control", "params": {
+            "Cmd": cmd, "DataOfCmd": key, "Option": "false", "TypeOfRemote": "SendRemoteKey"}})
+
+    async def launch(self, app_id, meta=""):
+        try:
+            status, _ = await self.rest(f"applications/{app_id}", "POST", timeout=5)
+        except Exception:
+            status = 0
+        if status == 200 and not meta:
+            return
+        # Deep links (and sets where the HTTP call is refused) go over the remote socket.
+        await self.send({"method": "ms.channel.emit", "params": {"event": "ed.apps.launch", "to": "host", "data": {
+            "appId": app_id, "action_type": "DEEP_LINK" if meta else "NATIVE_LAUNCH", "metaTag": meta}}})
+
+    def close(self):
+        ws, sess = self._ws, self._session
+        self._ws = self._session = None
+        try:
+            loop = asyncio.get_event_loop()
+            if ws is not None and not ws.closed:
+                loop.create_task(ws.close())
+            if sess is not None and not sess.closed:
+                loop.create_task(sess.close())
+        except Exception:
+            pass
+
+    def config(self):
+        svc = SimpleNamespace(protocol=SimpleNamespace(name="Samsung"), credentials=self.token or "",
+                              pairing=SimpleNamespace(name="Optional"))
+        return SimpleNamespace(
+            identifier=self.identifier, name=self.name, address=self.host,
+            device_info=SimpleNamespace(model=SimpleNamespace(name=self.model), version=self.version),
+            services=[svc], kind="samsung",
+        )
+
+
+async def samsung_probe(session, host):
+    """Ask one address whether it is a Samsung Tizen TV."""
+    try:
+        async with session.get(f"http://{host}:{SAMSUNG_PORT}/api/v2/",
+                               timeout=aiohttp.ClientTimeout(total=2.5)) as r:
+            if r.status != 200:
+                return None
+            d = json.loads(await r.text())
+    except Exception:
+        return None
+    dev = d.get("device") or {}
+    if "samsung" not in str(dev.get("type", "")).lower():
+        return None
+    return SamsungDevice(
+        host=host, name=html_unescape(d.get("name") or dev.get("name") or "Samsung TV"),
+        model=dev.get("modelName") or "Samsung TV", version=dev.get("OS") or "Tizen",
+        identifier="samsung:" + str(dev.get("id") or d.get("id") or host).replace("uuid:", ""),
+        mac=dev.get("wifiMac") or "", power_mode=str(dev.get("PowerState") or "on").lower(),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1577,6 +1972,8 @@ def routes(state: State):
                 await fn()
         except RokuLimited as e:
             return json_error(str(e), 403)
+        except AttributeError:
+            return json_error(f"This TV has no {name.replace('_', ' ')} button.", 501)
         except exceptions.NotSupportedError as e:
             return json_error(str(e) or f"'{name}' is not supported by this device.", 501)
         except Exception as e:
@@ -1622,7 +2019,7 @@ def routes(state: State):
                   "icon": (f"/api/appicon?id={urllib.parse.quote(str(a.identifier))}" if roku else None)}
                  for a in lst]
         apps_.sort(key=lambda a: (a["input"], (a["name"] or "").lower()))
-        return web.json_response({"ok": True, "apps": apps_, "kind": "roku" if roku else "appletv"})
+        return web.json_response({"ok": True, "apps": apps_, "kind": getattr(state.config, "kind", "appletv")})
 
     @r.post("/api/launch")
     async def launch(req):
@@ -1632,7 +2029,7 @@ def routes(state: State):
         if not target:
             return json_error("Nothing to launch.")
         try:
-            await atv.apps.launch_app(target if isinstance(atv, RokuDevice) else appletv_url(target))
+            await atv.apps.launch_app(target if isinstance(atv, (RokuDevice, SamsungDevice)) else appletv_url(target))
             # A deep link tells us what they opened, which apps like Netflix never report.
             label = (body.get("label") or "").strip()
             if label and target.startswith(("http://", "https://")):
@@ -1769,6 +2166,8 @@ def routes(state: State):
         try:
             if isinstance(atv, RokuDevice):
                 await atv.ecp("search/browse?keyword=" + urllib.parse.quote(q), "POST")
+            elif isinstance(atv, SamsungDevice):
+                return json_error("Samsung TVs do not take searches from other devices. Open an app and use its search.", 501)
             else:
                 await atv.apps.launch_app("com.apple.TVSearch")
                 await asyncio.sleep(3.0)

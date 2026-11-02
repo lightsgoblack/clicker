@@ -1,6 +1,6 @@
 # Colin's Cool Crazy Couch Computer Clicker
 
-Colossally convenient couch control, courtesy of Colin. A free remote for **Apple TV and Roku** that runs on your Mac and opens on your phone. Navigation, playback, volume, power, typing, sleep timer, continue-watching, and a customizable grid of favorites that launch apps or jump straight to a show.
+Colossally convenient couch control, courtesy of Colin. A free remote for **Apple TV, Roku, and Samsung TVs** that runs on your Mac and opens on your phone. Navigation, playback, volume, power, typing, sleep timer, continue-watching, and a customizable grid of favorites that launch apps or jump straight to a show.
 
 **[Setup guide for Mac and iPhone](https://lightsgoblack.github.io/clicker/)** — anyone can open it, no account needed (source: `docs/setup-guide.html`).
 
@@ -78,6 +78,12 @@ Rokus need no pairing at all. Open the device picker, and any Roku on your netwo
 One TV setting matters. If buttons do nothing, the Roku is in its restricted mode. On the TV: **Settings, System, Advanced system settings, Control by mobile apps, Network access, Permissive**. Clicker detects this and shows those steps in a banner rather than failing silently.
 
 Roku differences worth knowing: there is no screensaver or stop button, "Back" stands in for Menu, and Search uses Roku's own search screen. Roku deep links look like `roku://12?contentId=xyz` (12 is the channel id, from the "On this TV" list).
+
+## Samsung
+
+Samsung smart TVs from 2016 on (Tizen) appear in the same device list. The first time you tap Connect, the TV asks whether to allow Clicker; choose **Allow** with the Samsung remote within about 30 seconds. Clicker keeps the TV's answer, so it never asks again.
+
+Samsung TVs get a **Mute** button (so do Rokus), handy for sending sound through your Mac's speakers instead. Favorites for Netflix, YouTube, Disney+, Hulu, Apple TV, Prime Video, Peacock, Spotify, and Tubi open the Samsung version of the app, and Clicker shows which app is in front. Samsung does not report what is playing, so Now Playing, Continue watching, and stats stay empty. Power on uses Wake-on-LAN and takes about 10 seconds; it needs **Settings, General, Network, Expert Settings, Power On with Mobile**. If the Allow box never appears, check **Settings, General, External Device Manager, Device Connection Manager**: Access Notification should not be Off, and Clicker should not be listed as Deny.
 
 ## On your phone
 
